@@ -9,6 +9,7 @@
 //! - Data structure models are defined using the well-known [`serde`](https://github.com/serde-rs/serde) serialization framework
 //! - Index support on top of the `Database::run_command` (index management is currently not implemented in the underlying driver)
 //! - Indexes synchronization
+//! - Additional compile-time checks for queries using macros and type associated to mongo operators (eg: `And` instead of "$and")
 //!
 //! ## Example
 //!
@@ -58,8 +59,11 @@
 #[cfg(test)]
 extern crate pretty_assertions;
 
+mod macros;
+
 pub mod index;
 pub mod repository;
+pub mod operator;
 
 pub use index::*;
 pub use repository::*;
