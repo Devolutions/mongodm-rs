@@ -13,10 +13,10 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// A repository associated to a database and a model wrapping a mongo client.
+/// Associate a mongo client to a `Database` and a `Model`.
 ///
-/// This type can safely be copied and passed around. It's only wrapping a mongo client (only containing an `Arc`)
-/// and an optional `CollectionOptions` also wrapped in an `Arc` to used with`Database::collection_with_options`.
+/// This type can safely be copied and passed around. This is only wrapping a mongo `Client` (containing an `Arc`)
+/// and an optional `CollectionOptions` wrapped into an `Arc` used internally with `Database::collection_with_options`.
 #[derive(Debug, Clone)]
 pub struct Repository<B: Database, M: Model> {
     client: mongodb::Client,
