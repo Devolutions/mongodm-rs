@@ -2,13 +2,15 @@
 extern crate pretty_assertions;
 
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use mongodm::{Database, DatabaseExt, Index, IndexOption, Indexes, Model};
+use mongodm::{DatabaseConfig, DatabaseConfigExt, Index, IndexOption, Indexes, Model};
 use serde::{Deserialize, Serialize};
 
 struct TestDb;
 
-impl Database for TestDb {
-    const DB_NAME: &'static str = "rust_mongo_orm_tests";
+impl DatabaseConfig for TestDb {
+    fn db_name() -> &'static str {
+        "rust_mongo_orm_tests"
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -17,7 +19,9 @@ struct ModelOne {
 }
 
 impl Model for ModelOne {
-    const COLL_NAME: &'static str = "one_sync";
+    fn coll_name() -> &'static str {
+        "one_sync"
+    }
 
     fn indexes() -> Indexes {
         Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
@@ -85,7 +89,9 @@ struct ModelMultiple {
 }
 
 impl Model for ModelMultiple {
-    const COLL_NAME: &'static str = "multiple_sync";
+    fn coll_name() -> &'static str {
+        "multiple_sync"
+    }
 
     fn indexes() -> Indexes {
         Indexes::new().with(
@@ -102,7 +108,9 @@ struct ModelMultipleNoLastSeen {
 }
 
 impl Model for ModelMultipleNoLastSeen {
-    const COLL_NAME: &'static str = "multiple_sync";
+    fn coll_name() -> &'static str {
+        "multiple_sync"
+    }
 
     fn indexes() -> Indexes {
         Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
@@ -115,7 +123,9 @@ struct ModelMultipleNotUnique {
 }
 
 impl Model for ModelMultipleNotUnique {
-    const COLL_NAME: &'static str = "multiple_sync";
+    fn coll_name() -> &'static str {
+        "multiple_sync"
+    }
 
     fn indexes() -> Indexes {
         Indexes::new().with(Index::new("field"))

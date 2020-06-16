@@ -1,6 +1,7 @@
 //! Repositories are abstraction over a specific mongo collection for a given `Model`
 
-use crate::Database;
+use crate::DatabaseConfig;
+use crate::DatabaseConfigExt;
 use crate::Model;
 use mongodb::bson::de::from_bson;
 use mongodb::bson::doc;
@@ -11,62 +12,70 @@ use mongodb::options::ReadPreference;
 use mongodb::options::SelectionCriteria;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Associate a mongo client to a `Database` and a `Model`.
 ///
-/// This type can safely be copied and passed around. This is only wrapping a mongo `Client` (containing an `Arc`)
-/// and an optional `CollectionOptions` wrapped into an `Arc` used internally with `Database::collection_with_options`.
+/// This type can safely be copied and passed around. This is only wrapping a `mongodb::Collection` (internally using an `Arc`).
 #[derive(Debug, Clone)]
-pub struct Repository<B: Database, M: Model> {
-    client: mongodb::Client,
-    options: Option<Arc<CollectionOptions>>,
+pub struct Repository<B: DatabaseConfig, M: Model> {
+    db: mongodb::Database, // TODO: once indexes are officially supported in the driver, we should get all required opterations in `Collection` and remove this field
+    coll: mongodb::Collection,
     _pd: std::marker::PhantomData<(B, M)>,
 }
 
-impl<B: Database, M: Model> Repository<B, M> {
+impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
     /// Create a new repository from the given mongo client.
-    /// The `Collection` options (e.g. read preference and write concern) will default to those of the `Client`
-    ///
-    /// Note: technically options default to those of the `Database`, but we use the `Client::database` method internally,
-    /// so `Database` options are defaulted to those of the `Client`.
     pub fn new(client: mongodb::Client) -> Self {
+        let db = B::get_database(&client);
+
+        let coll = if let Some(options) = M::coll_options() {
+            db.collection_with_options(M::coll_name(), options)
+        } else {
+            db.collection(M::coll_name())
+        };
+
         Self {
-            client,
-            options: None,
+            db,
+            coll,
             _pd: std::marker::PhantomData,
         }
     }
 
-    /// Create a new repository with associated collection options.
+    /// Create a new repository with associated collection options (override `Model::coll_options`)
     pub fn new_with_options(client: mongodb::Client, options: CollectionOptions) -> Self {
+        let db = B::get_database(&client);
         Self {
-            client,
-            options: Some(Arc::new(options)),
+            coll: db.collection_with_options(M::coll_name(), options),
+            db,
             _pd: std::marker::PhantomData,
         }
     }
 
     /// Returns associated `B::DB_NAME`
     pub fn db_name(&self) -> &'static str {
-        B::DB_NAME
+        B::db_name()
     }
 
     /// Returns associated `M::COLL_NAME`
     pub fn coll_name(&self) -> &'static str {
-        M::COLL_NAME
+        M::coll_name()
+    }
+
+    /// Returns underlying `mongodb::Collection`
+    pub fn get_underlying(&self) -> mongodb::Collection {
+        mongodb::Collection::clone(&self.coll)
     }
 
     /// Synchronize model with underlying mongo collection.
     ///
     /// This should be called once per model on startup to synchronize indexes defined
     /// by the `Model`. Indexes found in the backend and not defined in the model are
-    /// destroyed expect for the special index "_id".
+    /// destroyed except for the special index "_id".
     pub async fn sync_indexes(&self) -> Result<(), mongodb::error::Error> {
         let mut indexes = M::indexes();
 
         match self
-            .h_run_command(doc! { "listIndexes": M::COLL_NAME })
+            .h_run_command(doc! { "listIndexes": M::coll_name() })
             .await
         {
             Ok(ret) => {
@@ -77,7 +86,7 @@ impl<B: Database, M: Model> Repository<B, M> {
                     // batch isn't complete
                     Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("couldn't list all indexes from '{}'", M::COLL_NAME),
+                        format!("couldn't list all indexes from '{}'", M::coll_name()),
                     ))?;
                 }
 
@@ -92,7 +101,9 @@ impl<B: Database, M: Model> Repository<B, M> {
                 let mut to_drop = Vec::new();
                 for (i, index) in indexes.0.clone().into_iter().enumerate() {
                     let index_doc = index.into_document();
-                    let key = index_doc.get("key").unwrap(); // "key" is always present in mongo response
+                    let key = index_doc.get("key").ok_or_else(|| {
+                        std::io::Error::new(std::io::ErrorKind::Other, "index doc is missing 'key'")
+                    })?;
                     if let Some(mut existing_index) = existing_indexes.remove(&key.to_string()) {
                         // "ns" and "v" in the response should not be used for the comparison
                         existing_index.remove("ns");
@@ -102,8 +113,12 @@ impl<B: Database, M: Model> Repository<B, M> {
                             already_sync.push(i);
                         } else {
                             // An index with the same specification already exists, we need to drop it.
-                            // `Index::into_document` generate a `Document` with a "name" (string)
-                            to_drop.push(index_doc.get_str("name").unwrap().to_owned());
+                            to_drop.push(
+                                index_doc
+                                    .get_str("name")
+                                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                                    .to_owned(),
+                            );
                         }
                     }
                 }
@@ -112,8 +127,10 @@ impl<B: Database, M: Model> Repository<B, M> {
                 // "_id" is special and cannot be deleted.
                 // https://api.mongodb.com/wiki/current/Indexes.html#Indexes-The%5CidIndex
                 for existing_index in existing_indexes.values() {
-                    // "name" is always present in mongo response
-                    let name = existing_index.get_str("name").unwrap().to_owned();
+                    let name = existing_index
+                        .get_str("name")
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                        .to_owned();
                     if name != "_id_" {
                         to_drop.push(name);
                     }
@@ -122,8 +139,21 @@ impl<B: Database, M: Model> Repository<B, M> {
                 if !to_drop.is_empty() {
                     // Actually send the drop command
                     // Dropping multiple indexes is available only starting MongoDB 4.2
-                    self.h_run_command(doc! { "dropIndexes": M::COLL_NAME, "index": to_drop })
-                        .await?;
+                    // If this fails, we fallback to a loop dropping all indexes individually
+                    // TODO: it would be better to select the method by checking mongo version, but db.version()
+                    // is not yet exposed by the driver.
+                    if self
+                        .h_run_command(doc! { "dropIndexes": M::coll_name(), "index": &to_drop })
+                        .await
+                        .is_err()
+                    {
+                        for index_name in to_drop {
+                            self.h_run_command(
+                                doc! { "dropIndexes": M::coll_name(), "index": index_name },
+                            )
+                            .await?;
+                        }
+                    }
                 }
 
                 // Ignore index already in sync
@@ -142,7 +172,7 @@ impl<B: Database, M: Model> Repository<B, M> {
         }
 
         if !indexes.0.is_empty() {
-            self.h_run_command(indexes.create_indexes_command(M::COLL_NAME))
+            self.h_run_command(indexes.create_indexes_command(M::coll_name()))
                 .await?;
         }
 
@@ -153,8 +183,8 @@ impl<B: Database, M: Model> Repository<B, M> {
         &self,
         command_doc: Document,
     ) -> Result<Document, mongodb::error::Error> {
-        let db = self.client.database(B::DB_NAME);
-        let ret = db
+        let ret = self
+            .db
             .run_command(
                 command_doc,
                 Some(SelectionCriteria::ReadPreference(ReadPreference::Primary)),
@@ -170,12 +200,12 @@ impl<B: Database, M: Model> Repository<B, M> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct ListIndexesRet {
     pub cursor: Cursor,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct Cursor {
     pub id: i64,
     #[serde(rename = "firstBatch", default)]

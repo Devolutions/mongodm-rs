@@ -14,14 +14,16 @@
 //!
 //! ```ignore
 //! # async fn demo() -> Result<(), mongodb::error::Error> {
-//! use mongodm::{Database, DatabaseExt, Model, Indexes, Index, IndexOption};
+//! use mongodm::{DatabaseConfig, DatabaseConfigExt, Model, Indexes, Index, IndexOption};
 //! use mongodb::{Client, options::ClientOptions};
 //! use serde::{Serialize, Deserialize};
 //!
 //! struct WaykDb;
 //!
-//! impl Database for WaykDb {
-//!     const DB_NAME: &'static str = "mongodm_wayk_demo";
+//! impl DatabaseConfig for WaykDb {
+//!     fn db_name() -> &'static str {
+//!         "mongodm_wayk_demo"
+//!     }
 //! }
 //!
 //! #[derive(Serialize, Deserialize)]
@@ -31,7 +33,9 @@
 //! }
 //!
 //! impl Model for User {
-//!     const COLL_NAME: &'static str = "user";
+//!     fn coll_name() -> &'static str {
+//!         "user"
+//!     }
 //!
 //!     fn indexes() -> Indexes {
 //!         Indexes::new().with(Index::new("username").with_option(IndexOption::Unique))
@@ -60,23 +64,48 @@ pub mod repository;
 pub use index::*;
 pub use repository::*;
 
-/// Define collection name and associated indexes
+/// Define collection configuration and associated indexes
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
-    const COLL_NAME: &'static str;
+    /// Collection name to use when creating a `mongodb::Collection` instance
+    fn coll_name() -> &'static str;
 
-    /// Configure how indexes should be synchronized for the associated collection
+    /// `mongodb::options::CollectionOptions` to be used when creating a `mongodb::Collection` instance
+    ///
+    /// This method has a default implementation returning `None`. In such case configuration is defined by `DatabaseConfig::db_options`.
+    fn coll_options() -> Option<mongodb::options::CollectionOptions> {
+        None
+    }
+
+    /// Configure how indexes should be created and synchronized for the associated collection
     fn indexes() -> index::Indexes {
         index::Indexes::default()
     }
 }
 
-/// Statically define database name
-pub trait Database: Sized {
-    const DB_NAME: &'static str;
+/// Define database configuration
+pub trait DatabaseConfig: Sized {
+    /// Database name to use when creating a `mongodb::Database` instance
+    fn db_name() -> &'static str;
+
+    /// `mongodb::options::DatabaseConfig` to be used when creating a `mongodb::Database` instance.
+    ///
+    /// This method has a default implementation returning `None`. In this case, `mongodb::Client` configuration will be applied.
+    fn db_options() -> Option<mongodb::options::DatabaseOptions> {
+        None
+    }
 }
 
-/// Add helper methods to `Database`. Auto-implemented for any type implementing `Database` trait
-pub trait DatabaseExt: Database {
+/// Add helper methods to `DatabaseConfig`. Auto-implemented for any type implementing `DatabaseConfig` trait
+pub trait DatabaseConfigExt: DatabaseConfig {
+    /// Get a `mongodb::Database` configured as specified by `DatabaseConfig` trait
+    fn get_database(client: &mongodb::Client) -> mongodb::Database {
+        if let Some(options) = Self::db_options() {
+            client.database_with_options(Self::db_name(), options)
+        } else {
+            client.database(Self::db_name())
+        }
+    }
+
     /// Shorthand for `Repository::<Db, Model>::new`
     fn get_repository<M: Model>(client: mongodb::Client) -> Repository<Self, M> {
         Repository::new(client)
@@ -91,4 +120,4 @@ pub trait DatabaseExt: Database {
     }
 }
 
-impl<T> DatabaseExt for T where T: Database {}
+impl<T> DatabaseConfigExt for T where T: DatabaseConfig {}
