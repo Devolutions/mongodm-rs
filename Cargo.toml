@@ -9,8 +9,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 mongodb = { version = "1", features = ["tokio-runtime"] }
 serde = { version = "1", features = ["derive"] }
-slog = "2"
-slog-stdlog = "4"
+futures-core = "0.3"
 
 [dev-dependencies]
 tokio = "0.2"

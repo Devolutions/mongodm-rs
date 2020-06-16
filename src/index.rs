@@ -201,7 +201,7 @@ pub enum IndexOption {
     Sparse,
     /// TTL to control how long data is retained in the collectino
     ExpireAfterSeconds(i32),
-    /// Name of the index (TODO: check how it plays with my createIndexes code)
+    /// Name of the index
     Name(String),
     /// Only references documents that match the filter expression
     PartialFilterExpression(Document),

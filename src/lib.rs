@@ -16,7 +16,7 @@
 //! ```ignore
 //! # async fn demo() -> Result<(), mongodb::error::Error> {
 //! use mongodm::{DatabaseConfig, DatabaseConfigExt, Model, Indexes, Index, IndexOption};
-//! use mongodb::{Client, options::ClientOptions};
+//! use mongodb::{Client, options::ClientOptions, bson::doc};
 //! use serde::{Serialize, Deserialize};
 //!
 //! struct WaykDb;
@@ -27,7 +27,7 @@
 //!     }
 //! }
 //!
-//! #[derive(Serialize, Deserialize)]
+//! #[derive(Serialize, Deserialize, Debug, PartialEq)]
 //! struct User {
 //!     username: String,
 //!     last_seen: i64,
@@ -49,6 +49,32 @@
 //! let repository = WaykDb::get_repository::<User>(client);
 //! repository.sync_indexes().await?;
 //! // indexes are now synced in backend
+//!
+//! let user = User {
+//!     username: String::from("David"),
+//!     last_seen: 1000,
+//! };
+//! repository.insert_one(&user, None).await?;
+//!
+//! // field! is used to make sure at compile time that `username` is a field of `User`
+//! use mongodm::field;
+//! let fetched_user = repository.find_one(doc! { field!(username in User): "David" }, None).await?;
+//! assert!(fetched_user.is_some());
+//! assert_eq!(fetched_user.unwrap(), user);
+//!
+//! // f! is a shorter version of field!
+//! use mongodm::f;
+//! repository.find_one(doc! { f!(username in User): "David" }, None).await?.unwrap();
+//!
+//! // With static operators for queries (prevent invalid queries due to typos)
+//! use mongodm::operator::*;
+//! repository.find_one(
+//!     doc! { And: [
+//!         { f!(username in User): "David" },
+//!         { f!(last_seen in User): { GreaterThan: 500 } },
+//!     ] },
+//!     None
+//! ).await?.unwrap();
 //! # Ok(())
 //! # }
 //! # let mut rt = tokio::runtime::Runtime::new().unwrap();
@@ -61,12 +87,14 @@ extern crate pretty_assertions;
 
 mod macros;
 
+pub mod cursor;
 pub mod index;
-pub mod repository;
 pub mod operator;
+pub mod repository;
 
-pub use index::*;
-pub use repository::*;
+pub use cursor::Cursor;
+pub use index::{Index, IndexOption, Indexes};
+pub use repository::Repository;
 
 /// Define collection configuration and associated indexes
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
@@ -100,6 +128,9 @@ pub trait DatabaseConfig: Sized {
 }
 
 /// Add helper methods to `DatabaseConfig`. Auto-implemented for any type implementing `DatabaseConfig` trait
+///
+/// Note: this is provided as a trait extension because it's not always desirable to get these in your namespace if
+/// you prefer to implement your own helpers over your `DatabaseConfig` type.
 pub trait DatabaseConfigExt: DatabaseConfig {
     /// Get a `mongodb::Database` configured as specified by `DatabaseConfig` trait
     fn get_database(client: &mongodb::Client) -> mongodb::Database {
