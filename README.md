@@ -1,3 +1,7 @@
+[![Crates.io](https://img.shields.io/crates/v/mongodm.svg)](https://crates.io/crates/mongodm)
+[![docs.rs](https://docs.rs/mongodm/badge.svg)](https://docs.rs/mongodm)
+![Crates.io](https://img.shields.io/crates/l/mongodm)
+
 MongODM
 =======
 
@@ -11,7 +15,9 @@ Main features:
 - Indexes synchronization
 - Additional compile-time checks for queries using macros and type associated to mongo operators (eg: `And` instead of "$and")
 
-See documentation for examples.
+## Examples
+
+See [documentation](https://docs.rs/mongodm).
 
 ## Tests
 
