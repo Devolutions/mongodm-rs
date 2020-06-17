@@ -197,14 +197,18 @@ pub enum IndexOption {
     Background,
     /// Creates a unique index
     Unique,
-    /// Only references documents with the specified field
-    Sparse,
-    /// TTL to control how long data is retained in the collectino
-    ExpireAfterSeconds(i32),
     /// Name of the index
     Name(String),
     /// Only references documents that match the filter expression
     PartialFilterExpression(Document),
+    /// Only references documents with the specified field
+    Sparse,
+    /// TTL to control how long data is retained in the collectino
+    ExpireAfterSeconds(i32),
+    /// Configure the storage engine
+    StorageEngine(Document),
+    /// Specifies the collation
+    Collation(Document),
     /// Specify a custom index option. This is present to provide forwards compatibility.
     Custom { name: String, value: Bson },
 }
@@ -214,10 +218,12 @@ impl IndexOption {
         match self {
             IndexOption::Background => "background",
             IndexOption::Unique => "unique",
-            IndexOption::Sparse => "sparse",
-            IndexOption::ExpireAfterSeconds(..) => "expireAfterSeconds",
             IndexOption::Name(..) => "name",
             IndexOption::PartialFilterExpression(..) => "partialFilterExpression",
+            IndexOption::Sparse => "sparse",
+            IndexOption::ExpireAfterSeconds(..) => "expireAfterSeconds",
+            IndexOption::StorageEngine(..) => "storageEngine",
+            IndexOption::Collation(..) => "collation",
             IndexOption::Custom { name, .. } => name.as_str(),
         }
     }
@@ -227,9 +233,11 @@ impl IndexOption {
             IndexOption::Background | IndexOption::Unique | IndexOption::Sparse => {
                 Bson::Boolean(true)
             }
-            IndexOption::ExpireAfterSeconds(val) => Bson::Int32(val),
             IndexOption::Name(val) => Bson::String(val),
-            IndexOption::PartialFilterExpression(doc) => Bson::Document(doc),
+            IndexOption::ExpireAfterSeconds(val) => Bson::Int32(val),
+            IndexOption::PartialFilterExpression(doc)
+            | IndexOption::StorageEngine(doc)
+            | IndexOption::Collation(doc) => Bson::Document(doc),
             IndexOption::Custom { value, .. } => value,
         }
     }
@@ -240,43 +248,6 @@ impl IndexOption {
         (name, value)
     }
 }
-
-//     #[serde(rename="storageEngine", skip_serializing_if="Option::is_none")]
-//     pub storage_engine: Option<bson::Document>,
-
-//     #[serde(rename="v", skip_serializing_if="Option::is_none")]
-//     pub version: Option<i32>,
-
-//     // Options for text indexes
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub default_language: Option<String>,
-
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub language_override: Option<String>,
-
-//     #[serde(rename="textIndexVersion", skip_serializing_if="Option::is_none")]
-//     pub text_version: Option<i32>,
-
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub weights: Option<bson::Document>,
-
-//     // Options for 2dsphere indexes
-//     #[serde(rename="2dsphereIndexVersion", skip_serializing_if="Option::is_none")]
-//     pub sphere_version: Option<i32>,
-
-//     // Options for 2d indexes
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub bits: Option<i32>,
-
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub max: Option<f64>,
-
-//     #[serde(skip_serializing_if="Option::is_none")]
-//     pub min: Option<f64>,
-
-//     // Options for geoHaystack indexes
-//     #[serde(rename="bucketSize", skip_serializing_if="Option::is_none")]
-//     pub bucket_size: Option<i32>,
 
 #[cfg(test)]
 mod tests {
