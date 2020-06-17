@@ -1,4 +1,4 @@
-//! `Cursor`s are used to stream result of a query
+//! `Cursor`s are used to stream result of a query.
 
 use crate::Model;
 use core::pin::Pin;
@@ -6,7 +6,7 @@ use futures_core::task;
 use futures_core::Stream;
 use mongodb::bson::{from_bson, Bson};
 
-/// Streams the result of a query asynchronously for the given `Model`
+/// Streams the result of a query asynchronously for the given `Model`.
 #[derive(Debug)]
 pub struct ModelCursor<M: Model> {
     inner: mongodb::Cursor,

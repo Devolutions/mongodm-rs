@@ -41,7 +41,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         }
     }
 
-    /// Create a new repository with associated collection options (override `Model::coll_options`)
+    /// Create a new repository with associated collection options (override `Model::coll_options`).
     pub fn new_with_options(
         client: mongodb::Client,
         db_conf: &B,
@@ -55,17 +55,17 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         }
     }
 
-    /// Returns associated `M::COLL_NAME`
+    /// Returns associated `M::COLL_NAME`.
     pub fn coll_name(&self) -> &'static str {
         M::coll_name()
     }
 
-    /// Returns underlying `mongodb::Collection`
+    /// Returns underlying `mongodb::Collection`.
     pub fn get_underlying(&self) -> mongodb::Collection {
         mongodb::Collection::clone(&self.coll)
     }
 
-    /// Drops the underlying collection, deleting all data, users, and indexes stored inside
+    /// Drops the underlying collection, deleting all data, users, and indexes stored inside.
     pub async fn drop(
         &self,
         options: impl Into<Option<DropCollectionOptions>>,
@@ -73,7 +73,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         self.coll.drop(options).await
     }
 
-    /// Runs an aggregation operation
+    /// Runs an aggregation operation.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/aggregation/)
     pub async fn aggregate(
@@ -124,7 +124,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         self.coll.delete_one(query, options).await
     }
 
-    /// Finds the distinct values of the field specified by `field_name` across the collection
+    /// Finds the distinct values of the field specified by `field_name` across the collection.
     pub async fn distinct(
         &self,
         field_name: &str,
@@ -141,7 +141,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         Ok(items)
     }
 
-    /// Finds the documents in the collection matching `filter`
+    /// Finds the documents in the collection matching `filter`.
     pub async fn find(
         &self,
         filter: impl Into<Option<Document>>,
@@ -153,7 +153,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
             .map(crate::cursor::ModelCursor::from)
     }
 
-    /// Finds a single document in the collection matching `filter`
+    /// Finds a single document in the collection matching `filter`.
     pub async fn find_one(
         &self,
         filter: impl Into<Option<Document>>,
@@ -168,7 +168,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         }
     }
 
-    /// Atomically finds up to one document in the collection matching `filter` and deletes it
+    /// Atomically finds up to one document in the collection matching `filter` and deletes it.
     pub async fn find_one_and_delete(
         &self,
         filter: Document,
@@ -184,7 +184,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
     }
 
     /// Atomically finds up to one document in the collection matching `filter` and replaces it with
-    /// `replacement`
+    /// `replacement`.
     pub async fn find_one_and_replace(
         &self,
         filter: Document,
@@ -204,7 +204,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         }
     }
 
-    /// Atomically finds up to one model in the collection matching `filter` and updates it
+    /// Atomically finds up to one model in the collection matching `filter` and updates it.
     ///
     /// Both `Document` and `Vec<Document>` implement `Into<UpdateModifications>`, so either can be
     /// passed in place of constructing the enum case. Note: pipeline updates are only supported
@@ -227,7 +227,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         }
     }
 
-    /// Inserts the models into the collection
+    /// Inserts the models into the collection.
     pub async fn insert_many(
         &self,
         models: impl IntoIterator<Item = M>,
@@ -241,7 +241,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         self.coll.insert_many(docs, options).await
     }
 
-    /// Inserts model `M` into the collection
+    /// Inserts model `M` into the collection.
     pub async fn insert_one(
         &self,
         model: &M,
@@ -251,7 +251,7 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         self.coll.insert_one(doc, options).await
     }
 
-    /// Replaces up to one document matching `query` in the collection with `replacement`
+    /// Replaces up to one document matching `query` in the collection with `replacement`.
     pub async fn replace_one(
         &self,
         query: Document,

@@ -100,19 +100,19 @@ pub use repository::Repository;
 // Re-export mongodb
 pub use mongodb as mongo;
 
-/// Define collection configuration and associated indexes
+/// Define collection configuration and associated indexes. `Model` can't be made into a trait object.
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
     /// Collection name to use when creating a `mongodb::Collection` instance
     fn coll_name() -> &'static str;
 
-    /// `mongodb::options::CollectionOptions` to be used when creating a `mongodb::Collection` instance
+    /// `mongodb::options::CollectionOptions` to be used when creating a `mongodb::Collection` instance.
     ///
     /// This method has a default implementation returning `None`. In such case configuration is defined by `DatabaseConfig::db_options`.
     fn coll_options() -> Option<mongodb::options::CollectionOptions> {
         None
     }
 
-    /// Configure how indexes should be created and synchronized for the associated collection
+    /// Configure how indexes should be created and synchronized for the associated collection.
     fn indexes() -> index::Indexes {
         index::Indexes::default()
     }

@@ -1,4 +1,4 @@
-//! Static operators for queries to prevent invalid queries due to typos
+//! Static operators for queries to prevent invalid queries due to typos.
 //!
 //! See mongo manual for [query operators](https://docs.mongodb.com/manual/reference/operator/query/)
 //! and [update operators](https://docs.mongodb.com/manual/reference/operator/update/).

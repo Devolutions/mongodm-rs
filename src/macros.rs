@@ -68,7 +68,7 @@ macro_rules! field {
     }};
 }
 
-/// Shorthand for `field!`
+/// Shorthand for `field!`.
 ///
 /// # Example
 ///

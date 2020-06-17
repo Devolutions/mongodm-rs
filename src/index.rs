@@ -1,4 +1,4 @@
-//! Indexes are used for efficient mongo queries
+//! Indexes are used for efficient mongo queries.
 
 use mongodb::bson::doc;
 use mongodb::bson::Bson;
@@ -39,14 +39,14 @@ pub struct Index {
 }
 
 impl Index {
-    /// Make a new index for the given key with ascending direction
+    /// Make a new index for the given key with ascending direction.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-single/)
     pub fn new(key: impl Into<Cow<'static, str>>) -> Self {
         Self::new_with_direction(key, SortOrder::Ascending)
     }
 
-    /// Make a new index for the given key with a direction
+    /// Make a new index for the given key with a direction.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-single/)
     pub fn new_with_direction(key: impl Into<Cow<'static, str>>, direction: SortOrder) -> Self {
@@ -55,20 +55,20 @@ impl Index {
         index
     }
 
-    /// Make this index compound adding the given key with ascending direction
+    /// Make this index compound adding the given key with ascending direction.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
     pub fn add_key(&mut self, key: impl Into<Cow<'static, str>>) {
         self.add_key_with_direction(key, SortOrder::Ascending)
     }
 
-    /// Builder style method for `add_key`
+    /// Builder style method for `add_key`.
     pub fn with_key(mut self, key: impl Into<Cow<'static, str>>) -> Self {
         self.add_key(key);
         self
     }
 
-    /// Make this index compound adding the given key with a direction
+    /// Make this index compound adding the given key with a direction.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
     pub fn add_key_with_direction(
@@ -82,7 +82,7 @@ impl Index {
         });
     }
 
-    /// Builder style method for `add_key_with_direction`
+    /// Builder style method for `add_key_with_direction`.
     pub fn with_key_with_direction(
         mut self,
         key: impl Into<Cow<'static, str>>,
@@ -92,20 +92,20 @@ impl Index {
         self
     }
 
-    /// Add an option to this index
+    /// Add an option to this index.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/reference/method/db.collection.createIndex/#options)
     pub fn add_option(&mut self, option: IndexOption) {
         self.options.push(option);
     }
 
-    /// Builder style method for `add_option`
+    /// Builder style method for `add_option`.
     pub fn with_option(mut self, option: IndexOption) -> Self {
         self.add_option(option);
         self
     }
 
-    /// Convert this structure into a `Document` version structured as expected by mongo
+    /// Convert this structure into a `Document` version structured as expected by mongo.
     pub fn into_document(self) -> Document {
         // If document is missing "name" we follow default name generation as described in mongodb doc and
         // add it.
