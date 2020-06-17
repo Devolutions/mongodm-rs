@@ -81,11 +81,11 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         &self,
         pipeline: impl IntoIterator<Item = Document>,
         options: impl Into<Option<AggregateOptions>>,
-    ) -> mongodb::error::Result<crate::cursor::Cursor<M>> {
+    ) -> mongodb::error::Result<crate::cursor::ModelCursor<M>> {
         self.coll
             .aggregate(pipeline, options)
             .await
-            .map(crate::cursor::Cursor::from)
+            .map(crate::cursor::ModelCursor::from)
     }
 
     /// Estimates the number of documents in the collection using collection metadata.
@@ -147,11 +147,11 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
         &self,
         filter: impl Into<Option<Document>>,
         options: impl Into<Option<FindOptions>>,
-    ) -> mongodb::error::Result<crate::cursor::Cursor<M>> {
+    ) -> mongodb::error::Result<crate::cursor::ModelCursor<M>> {
         self.coll
             .find(filter, options)
             .await
-            .map(crate::cursor::Cursor::from)
+            .map(crate::cursor::ModelCursor::from)
     }
 
     /// Finds a single document in the collection matching `filter`

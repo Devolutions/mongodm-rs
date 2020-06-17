@@ -8,12 +8,12 @@ use mongodb::bson::{from_bson, Bson};
 
 /// Streams the result of a query asynchronously for the given `Model`
 #[derive(Debug)]
-pub struct Cursor<M: Model> {
+pub struct ModelCursor<M: Model> {
     inner: mongodb::Cursor,
     _pd: std::marker::PhantomData<M>,
 }
 
-impl<M: Model> From<mongodb::Cursor> for Cursor<M> {
+impl<M: Model> From<mongodb::Cursor> for ModelCursor<M> {
     fn from(inner: mongodb::Cursor) -> Self {
         Self {
             inner,
@@ -22,7 +22,7 @@ impl<M: Model> From<mongodb::Cursor> for Cursor<M> {
     }
 }
 
-impl<M: Model + Unpin> Stream for Cursor<M> {
+impl<M: Model + Unpin> Stream for ModelCursor<M> {
     type Item = mongodb::error::Result<M>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut task::Context) -> task::Poll<Option<Self::Item>> {

@@ -92,7 +92,7 @@ pub mod index;
 pub mod operator;
 pub mod repository;
 
-pub use cursor::Cursor;
+pub use cursor::ModelCursor;
 pub use index::{Index, IndexOption, Indexes};
 pub use repository::Repository;
 
