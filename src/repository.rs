@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 /// Associate a mongo client to a `Database` and a `Model`.
 ///
-/// This type can safely be copied and passed around. This is only wrapping a `mongodb::Collection` (internally using an `Arc`).
+/// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
 #[derive(Debug, Clone)]
 pub struct Repository<B: DatabaseConfig, M: Model> {
     db: mongodb::Database, // TODO: once indexes are officially supported in the driver, we should get all required opterations in `Collection` and remove this field
@@ -25,8 +25,8 @@ pub struct Repository<B: DatabaseConfig, M: Model> {
 
 impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
     /// Create a new repository from the given mongo client.
-    pub fn new(client: mongodb::Client) -> Self {
-        let db = B::get_database(&client);
+    pub fn new(client: mongodb::Client, db_conf: &B) -> Self {
+        let db = db_conf.database(&client);
 
         let coll = if let Some(options) = M::coll_options() {
             db.collection_with_options(M::coll_name(), options)
@@ -42,18 +42,17 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
     }
 
     /// Create a new repository with associated collection options (override `Model::coll_options`)
-    pub fn new_with_options(client: mongodb::Client, options: CollectionOptions) -> Self {
-        let db = B::get_database(&client);
+    pub fn new_with_options(
+        client: mongodb::Client,
+        db_conf: &B,
+        coll_options: CollectionOptions,
+    ) -> Self {
+        let db = db_conf.database(&client);
         Self {
-            coll: db.collection_with_options(M::coll_name(), options),
+            coll: db.collection_with_options(M::coll_name(), coll_options),
             db,
             _pd: std::marker::PhantomData,
         }
-    }
-
-    /// Returns associated `B::DB_NAME`
-    pub fn db_name(&self) -> &'static str {
-        B::db_name()
     }
 
     /// Returns associated `M::COLL_NAME`

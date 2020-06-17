@@ -4,12 +4,13 @@ extern crate pretty_assertions;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use mongodm::{DatabaseConfig, DatabaseConfigExt, Index, IndexOption, Indexes, Model};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 struct TestDb;
 
 impl DatabaseConfig for TestDb {
-    fn db_name() -> &'static str {
-        "rust_mongo_orm_tests"
+    fn db_name(&self) -> Cow<'static, str> {
+        Cow::Borrowed("rust_mongo_orm_tests")
     }
 }
 
@@ -35,15 +36,10 @@ async fn one_sync() {
         .await
         .unwrap();
     let client = Client::with_options(client_options).unwrap();
+    let db = client.database(&TestDb.db_name());
 
-    let repository = TestDb::get_repository::<ModelOne>(client.clone());
-
-    let db = client.database(repository.db_name());
-    db.collection(repository.coll_name())
-        .drop(None)
-        .await
-        .unwrap();
-
+    let repository = TestDb.repository::<ModelOne>(client.clone());
+    repository.drop(None).await.unwrap();
     repository.sync_indexes().await.unwrap();
 
     let ret = db
@@ -139,15 +135,10 @@ async fn multiple_sync() {
         .await
         .unwrap();
     let client = Client::with_options(client_options).unwrap();
+    let db = client.database(&TestDb.db_name());
 
-    let repository = TestDb::get_repository::<ModelMultiple>(client.clone());
-
-    let db = client.database(repository.db_name());
-    db.collection(repository.coll_name())
-        .drop(None)
-        .await
-        .unwrap();
-
+    let repository = TestDb.repository::<ModelMultiple>(client.clone());
+    repository.drop(None).await.unwrap();
     repository.sync_indexes().await.unwrap();
 
     let ret = db
@@ -186,7 +177,7 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = TestDb::get_repository::<ModelMultipleNoLastSeen>(client.clone());
+    let repository = TestDb.repository::<ModelMultipleNoLastSeen>(client.clone());
 
     repository.sync_indexes().await.unwrap();
 
@@ -225,7 +216,7 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = TestDb::get_repository::<ModelMultipleNotUnique>(client.clone());
+    let repository = TestDb.repository::<ModelMultipleNotUnique>(client.clone());
 
     repository.sync_indexes().await.unwrap();
 
