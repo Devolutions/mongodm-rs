@@ -1,6 +1,6 @@
 [package]
 name = "mongodm"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Benoît CORTIER <benoit.cortier@fried-world.eu>"]
 edition = "2018"
 description = "A thin ODM layer for mongodb"
@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/bcortier-devolutions/mongodm-rs"
 keywords = ["mongodb", "database", "nosql", "odm"]
 categories = ["database"]
+readme = "README.md"
 
 [dependencies]
 mongodb = { version = "1", features = ["tokio-runtime"] }
