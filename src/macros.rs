@@ -3,7 +3,7 @@
 /// # Example
 ///
 /// ```
-/// use mongodb::bson::doc;
+/// use mongodm::mongo::bson::doc;
 /// use mongodm::field;
 /// use mongodm::operator::*;
 ///
@@ -46,7 +46,7 @@
 /// If the field doesn't exist, compilation will fail.
 ///
 /// ```compile_fail
-/// use mongodb::bson::doc;
+/// use mongodm::mongo::bson::doc;
 /// use mongodm::field;
 /// use mongodm::operator::*;
 ///
@@ -73,7 +73,7 @@ macro_rules! field {
 /// # Example
 ///
 /// ```
-/// use mongodb::bson::doc;
+/// use mongodm::mongo::bson::doc;
 /// use mongodm::f;
 /// use mongodm::operator::*;
 ///

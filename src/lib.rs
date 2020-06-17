@@ -16,7 +16,7 @@
 //! ```ignore
 //! # async fn demo() -> Result<(), mongodb::error::Error> {
 //! use mongodm::{DatabaseConfig, DatabaseConfigExt, Model, Indexes, Index, IndexOption};
-//! use mongodb::{Client, options::ClientOptions, bson::doc};
+//! use mongodm::mongo::{Client, options::ClientOptions, bson::doc};
 //! use serde::{Serialize, Deserialize};
 //!
 //! struct WaykDb;
@@ -95,6 +95,9 @@ pub mod repository;
 pub use cursor::ModelCursor;
 pub use index::{Index, IndexOption, Indexes};
 pub use repository::Repository;
+
+// Re-export mongodb
+pub use mongodb as mongo;
 
 /// Define collection configuration and associated indexes
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {

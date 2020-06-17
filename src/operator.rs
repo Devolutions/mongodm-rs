@@ -3,7 +3,7 @@
 //! See [mongo manual](https://docs.mongodb.com/manual/reference/operator/query/).
 //!
 //! ```
-//! use mongodb::bson::doc;
+//! use mongodm::mongo::bson::doc;
 //! use mongodm::operator::*;
 //!
 //! // Using static operators
