@@ -1,7 +1,5 @@
 //! Repositories are abstraction over a specific mongo collection for a given `Model`
 
-use crate::DatabaseConfig;
-use crate::DatabaseConfigExt;
 use crate::Model;
 use mongodb::bson::doc;
 use mongodb::bson::from_bson;
@@ -17,17 +15,15 @@ use std::collections::HashMap;
 ///
 /// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
 #[derive(Debug, Clone)]
-pub struct Repository<B: DatabaseConfig, M: Model> {
+pub struct Repository<M: Model> {
     db: mongodb::Database, // TODO: once indexes are officially supported in the driver, we should get all required opterations in `Collection` and remove this field
     coll: mongodb::Collection,
-    _pd: std::marker::PhantomData<(B, M)>,
+    _pd: std::marker::PhantomData<M>,
 }
 
-impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
+impl<M: Model> Repository<M> {
     /// Create a new repository from the given mongo client.
-    pub fn new(client: mongodb::Client, db_conf: &B) -> Self {
-        let db = db_conf.database(&client);
-
+    pub fn new(db: mongodb::Database) -> Self {
         let coll = if let Some(options) = M::coll_options() {
             db.collection_with_options(M::coll_name(), options)
         } else {
@@ -42,14 +38,9 @@ impl<B: DatabaseConfig + DatabaseConfigExt, M: Model> Repository<B, M> {
     }
 
     /// Create a new repository with associated collection options (override `Model::coll_options`).
-    pub fn new_with_options(
-        client: mongodb::Client,
-        db_conf: &B,
-        coll_options: CollectionOptions,
-    ) -> Self {
-        let db = db_conf.database(&client);
+    pub fn new_with_options(db: mongodb::Database, options: CollectionOptions) -> Self {
         Self {
-            coll: db.collection_with_options(M::coll_name(), coll_options),
+            coll: db.collection_with_options(M::coll_name(), options),
             db,
             _pd: std::marker::PhantomData,
         }

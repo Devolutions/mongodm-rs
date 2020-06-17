@@ -4,17 +4,8 @@ extern crate pretty_assertions;
 use futures_util::StreamExt;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use mongodm::operator::*;
-use mongodm::{f, DatabaseConfig, DatabaseConfigExt, Index, IndexOption, Indexes, Model};
+use mongodm::{f, Index, IndexOption, Indexes, Model, ToRepository};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-
-struct TestDb;
-
-impl DatabaseConfig for TestDb {
-    fn db_name(&self) -> Cow<'static, str> {
-        Cow::Borrowed("rust_mongo_orm_tests")
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 struct User {
@@ -42,8 +33,9 @@ async fn insert_delete_find() {
         .await
         .unwrap();
     let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
 
-    let repository = TestDb.repository::<User>(client);
+    let repository = db.repository::<User>();
     repository.drop(None).await.unwrap();
     repository.sync_indexes().await.unwrap();
 

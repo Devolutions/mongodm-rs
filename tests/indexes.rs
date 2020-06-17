@@ -2,17 +2,8 @@
 extern crate pretty_assertions;
 
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use mongodm::{DatabaseConfig, DatabaseConfigExt, Index, IndexOption, Indexes, Model};
+use mongodm::{Index, IndexOption, Indexes, Model, ToRepository};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-
-struct TestDb;
-
-impl DatabaseConfig for TestDb {
-    fn db_name(&self) -> Cow<'static, str> {
-        Cow::Borrowed("rust_mongo_orm_tests")
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 struct ModelOne {
@@ -36,9 +27,9 @@ async fn one_sync() {
         .await
         .unwrap();
     let client = Client::with_options(client_options).unwrap();
-    let db = client.database(&TestDb.db_name());
+    let db = client.database("rust_mongo_orm_tests");
 
-    let repository = TestDb.repository::<ModelOne>(client.clone());
+    let repository = db.repository::<ModelOne>();
     repository.drop(None).await.unwrap();
     repository.sync_indexes().await.unwrap();
 
@@ -135,9 +126,9 @@ async fn multiple_sync() {
         .await
         .unwrap();
     let client = Client::with_options(client_options).unwrap();
-    let db = client.database(&TestDb.db_name());
+    let db = client.database("rust_mongo_orm_tests");
 
-    let repository = TestDb.repository::<ModelMultiple>(client.clone());
+    let repository = db.repository::<ModelMultiple>();
     repository.drop(None).await.unwrap();
     repository.sync_indexes().await.unwrap();
 
@@ -177,7 +168,7 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = TestDb.repository::<ModelMultipleNoLastSeen>(client.clone());
+    let repository = db.repository::<ModelMultipleNoLastSeen>();
 
     repository.sync_indexes().await.unwrap();
 
@@ -216,7 +207,7 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = TestDb.repository::<ModelMultipleNotUnique>(client.clone());
+    let repository = db.repository::<ModelMultipleNotUnique>();
 
     repository.sync_indexes().await.unwrap();
 
