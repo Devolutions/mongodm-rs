@@ -87,7 +87,7 @@ pub mod operator;
 pub mod repository;
 
 pub use cursor::ModelCursor;
-pub use index::{Index, IndexOption, Indexes};
+pub use index::{Index, IndexOption, Indexes, SortOrder};
 pub use repository::Repository;
 
 // Re-export mongodb
