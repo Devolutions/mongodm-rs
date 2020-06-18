@@ -15,7 +15,7 @@ struct User {
 }
 
 impl Model for User {
-    fn coll_name() -> &'static str {
+    fn collection_name() -> &'static str {
         "some_operations"
     }
 

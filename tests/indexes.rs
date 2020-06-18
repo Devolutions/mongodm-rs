@@ -11,7 +11,7 @@ struct ModelOne {
 }
 
 impl Model for ModelOne {
-    fn coll_name() -> &'static str {
+    fn collection_name() -> &'static str {
         "one_sync"
     }
 
@@ -34,7 +34,7 @@ async fn one_sync() {
     repository.sync_indexes().await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.coll_name() }, None)
+        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
         .await
         .unwrap();
 
@@ -76,7 +76,7 @@ struct ModelMultiple {
 }
 
 impl Model for ModelMultiple {
-    fn coll_name() -> &'static str {
+    fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
@@ -95,7 +95,7 @@ struct ModelMultipleNoLastSeen {
 }
 
 impl Model for ModelMultipleNoLastSeen {
-    fn coll_name() -> &'static str {
+    fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
@@ -111,7 +111,7 @@ struct ModelMultipleNotUnique {
 }
 
 impl Model for ModelMultipleNotUnique {
-    fn coll_name() -> &'static str {
+    fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
@@ -134,7 +134,7 @@ async fn multiple_sync() {
     repository.sync_indexes().await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.coll_name() }, None)
+        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
         .await
         .unwrap();
 
@@ -174,7 +174,7 @@ async fn multiple_sync() {
     repository.sync_indexes().await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.coll_name() }, None)
+        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
         .await
         .unwrap();
 
@@ -213,7 +213,7 @@ async fn multiple_sync() {
     repository.sync_indexes().await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.coll_name() }, None)
+        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
         .await
         .unwrap();
 

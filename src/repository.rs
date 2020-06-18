@@ -25,10 +25,10 @@ pub struct Repository<M: Model> {
 impl<M: Model> Repository<M> {
     /// Create a new repository from the given mongo client.
     pub fn new(db: mongodb::Database) -> Self {
-        let coll = if let Some(options) = M::coll_options() {
-            db.collection_with_options(M::coll_name(), options)
+        let coll = if let Some(options) = M::collection_options() {
+            db.collection_with_options(M::collection_name(), options)
         } else {
-            db.collection(M::coll_name())
+            db.collection(M::collection_name())
         };
 
         Self {
@@ -41,15 +41,15 @@ impl<M: Model> Repository<M> {
     /// Create a new repository with associated collection options (override `Model::coll_options`).
     pub fn new_with_options(db: mongodb::Database, options: CollectionOptions) -> Self {
         Self {
-            coll: db.collection_with_options(M::coll_name(), options),
+            coll: db.collection_with_options(M::collection_name(), options),
             db,
             _pd: std::marker::PhantomData,
         }
     }
 
-    /// Returns associated `M::COLL_NAME`.
-    pub fn coll_name(&self) -> &'static str {
-        M::coll_name()
+    /// Returns associated `M::collection_name`.
+    pub fn collection_name(&self) -> &'static str {
+        M::collection_name()
     }
 
     /// Returns underlying `mongodb::Collection`.
@@ -293,7 +293,7 @@ impl<M: Model> Repository<M> {
         let mut indexes = M::indexes();
 
         match self
-            .h_run_command(doc! { "listIndexes": M::coll_name() })
+            .h_run_command(doc! { "listIndexes": M::collection_name() })
             .await
         {
             Ok(ret) => {
@@ -304,7 +304,7 @@ impl<M: Model> Repository<M> {
                     // batch isn't complete
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("couldn't list all indexes from '{}'", M::coll_name()),
+                        format!("couldn't list all indexes from '{}'", M::collection_name()),
                     )
                     .into());
                 }
@@ -362,13 +362,13 @@ impl<M: Model> Repository<M> {
                     // TODO: it would be better to select the method by checking mongo version, but db.version()
                     // is not yet exposed by the driver.
                     if self
-                        .h_run_command(doc! { "dropIndexes": M::coll_name(), "index": &to_drop })
+                        .h_run_command(doc! { "dropIndexes": M::collection_name(), "index": &to_drop })
                         .await
                         .is_err()
                     {
                         for index_name in to_drop {
                             self.h_run_command(
-                                doc! { "dropIndexes": M::coll_name(), "index": index_name },
+                                doc! { "dropIndexes": M::collection_name(), "index": index_name },
                             )
                             .await?;
                         }
@@ -391,7 +391,7 @@ impl<M: Model> Repository<M> {
         }
 
         if !indexes.0.is_empty() {
-            self.h_run_command(indexes.create_indexes_command(M::coll_name()))
+            self.h_run_command(indexes.create_indexes_command(M::collection_name()))
                 .await?;
         }
 
