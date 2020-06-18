@@ -21,8 +21,8 @@ impl Model for User {
 
     fn indexes() -> Indexes {
         Indexes::new()
-            .with(Index::new("name").with_option(IndexOption::Unique))
-            .with(Index::new("age"))
+            .with(Index::new(f!(name in User)).with_option(IndexOption::Unique))
+            .with(Index::new(f!(age in User)))
     }
 }
 

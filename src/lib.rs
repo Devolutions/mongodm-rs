@@ -19,6 +19,8 @@
 //! use mongodm::mongo::{Client, options::ClientOptions, bson::doc};
 //! use serde::{Serialize, Deserialize};
 //! use std::borrow::Cow;
+//! // field! is used to make sure at compile time that some field exists in a given structure
+//! use mongodm::field;
 //!
 //! #[derive(Serialize, Deserialize, Debug, PartialEq)]
 //! struct User {
@@ -32,7 +34,9 @@
 //!     }
 //!
 //!     fn indexes() -> Indexes {
-//!         Indexes::new().with(Index::new("username").with_option(IndexOption::Unique))
+//!         Indexes::new()
+//!             .with(Index::new("username").with_option(IndexOption::Unique))
+//!             .with(Index::new(field!(last_seen in User))) // field! macro can be used as well
 //!     }
 //! }
 //!
@@ -50,8 +54,7 @@
 //! };
 //! repository.insert_one(&user, None).await?;
 //!
-//! // field! is used to make sure at compile time that `username` is a field of `User`
-//! use mongodm::field;
+//! // We make sure at compile time that `username` is a field of `User`
 //! let fetched_user = repository.find_one(doc! { field!(username in User): "David" }, None).await?;
 //! assert!(fetched_user.is_some());
 //! assert_eq!(fetched_user.unwrap(), user);

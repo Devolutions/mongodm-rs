@@ -32,6 +32,26 @@ struct IndexKey {
 /// Specify field to be used for indexing and options.
 ///
 /// [Mongo manual](https://docs.mongodb.com/manual/indexes/)
+///
+/// # Example
+/// ```
+/// use mongodm::{Index, SortOrder, IndexOption, mongo::bson::doc};
+///
+/// let index = Index::new_with_direction("username", SortOrder::Descending)
+///     .with_key("last_seen") // compound with last_seen
+///     .with_option(IndexOption::Unique);
+///
+/// let doc = index.into_document();
+///
+/// assert_eq!(
+///     doc,
+///     doc! {
+///         "key": { "username": -1, "last_seen": 1 },
+///         "unique": true,
+///         "name": "username_-1_last_seen_1",
+///     }
+/// )
+/// ```
 #[derive(Default, Clone, Debug)]
 pub struct Index {
     keys: Vec<IndexKey>,

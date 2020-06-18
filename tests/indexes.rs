@@ -2,7 +2,7 @@
 extern crate pretty_assertions;
 
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use mongodm::{Index, IndexOption, Indexes, Model, ToRepository};
+use mongodm::{f, Index, IndexOption, Indexes, Model, ToRepository};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -16,7 +16,7 @@ impl Model for ModelOne {
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
+        Indexes::new().with(Index::new(f!(field in ModelOne)).with_option(IndexOption::Unique))
     }
 }
 
@@ -82,8 +82,8 @@ impl Model for ModelMultiple {
 
     fn indexes() -> Indexes {
         Indexes::new().with(
-            Index::new("field")
-                .with_key("last_seen")
+            Index::new(f!(field in ModelMultiple))
+                .with_key(f!(last_seen in ModelMultiple))
                 .with_option(IndexOption::Unique),
         )
     }
@@ -100,7 +100,8 @@ impl Model for ModelMultipleNoLastSeen {
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
+        Indexes::new()
+            .with(Index::new(f!(field in ModelMultipleNoLastSeen)).with_option(IndexOption::Unique))
     }
 }
 
@@ -115,7 +116,7 @@ impl Model for ModelMultipleNotUnique {
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(Index::new("field"))
+        Indexes::new().with(Index::new(f!(field in ModelMultipleNotUnique)))
     }
 }
 
