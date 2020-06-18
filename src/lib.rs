@@ -103,7 +103,8 @@ pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
 
     /// `mongodb::options::CollectionOptions` to be used when creating a `mongodb::Collection` instance.
     ///
-    /// This method has a default implementation returning `None`. In such case configuration is defined by `DatabaseConfig::db_options`.
+    /// This method has a default implementation returning `None`.
+    /// In such case configuration is defined by the `mongodb::Database` used on `Repository` creation.
     fn collection_options() -> Option<mongodb::options::CollectionOptions> {
         None
     }
