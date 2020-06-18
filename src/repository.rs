@@ -301,10 +301,11 @@ impl<M: Model> Repository<M> {
 
                 if parsed_ret.cursor.id != 0 {
                     // batch isn't complete
-                    Err(std::io::Error::new(
+                    return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         format!("couldn't list all indexes from '{}'", M::coll_name()),
-                    ))?;
+                    )
+                    .into());
                 }
 
                 let mut existing_indexes = HashMap::new();
