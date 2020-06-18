@@ -11,9 +11,10 @@ use mongodb::results::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-/// Associate a mongo client to a `Database` and a `Model`.
+/// Associate a `mongodb::Collection` and a specific `Model`.
 ///
 /// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
+/// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
 #[derive(Debug, Clone)]
 pub struct Repository<M: Model> {
     db: mongodb::Database, // TODO: once indexes are officially supported in the driver, we should get all required opterations in `Collection` and remove this field
