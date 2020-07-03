@@ -4,17 +4,14 @@ extern crate pretty_assertions;
 use futures_util::StreamExt;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use mongodm::operator::*;
-use mongodm::{f, Index, IndexOption, Indexes, Model, ToRepository};
+use mongodm::{
+    f, sync_indexes, CollectionConfig, Index, IndexOption, Indexes, Model, ToRepository,
+};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
-struct User {
-    name: String,
-    age: i32,
-    info: String,
-}
+struct UserCollConf;
 
-impl Model for User {
+impl CollectionConfig for UserCollConf {
     fn collection_name() -> &'static str {
         "some_operations"
     }
@@ -24,6 +21,17 @@ impl Model for User {
             .with(Index::new(f!(name in User)).with_option(IndexOption::Unique))
             .with(Index::new(f!(age in User)))
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    name: String,
+    age: i32,
+    info: String,
+}
+
+impl Model for User {
+    type CollConf = UserCollConf;
 }
 
 #[tokio::test]
@@ -37,7 +45,7 @@ async fn insert_delete_find() {
 
     let repository = db.repository::<User>();
     repository.drop(None).await.unwrap();
-    repository.sync_indexes().await.unwrap();
+    sync_indexes::<UserCollConf>(&db).await.unwrap();
 
     let users = vec![
         User {

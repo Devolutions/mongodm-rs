@@ -15,20 +15,16 @@
 //!
 //! ```ignore
 //! # async fn demo() -> Result<(), mongodb::error::Error> {
-//! use mongodm::{ToRepository, Model, Indexes, Index, IndexOption};
+//! use mongodm::{ToRepository, Model, CollectionConfig, Indexes, Index, IndexOption, sync_indexes};
 //! use mongodm::mongo::{Client, options::ClientOptions, bson::doc};
 //! use serde::{Serialize, Deserialize};
 //! use std::borrow::Cow;
 //! // field! is used to make sure at compile time that some field exists in a given structure
 //! use mongodm::field;
 //!
-//! #[derive(Serialize, Deserialize, Debug, PartialEq)]
-//! struct User {
-//!     username: String,
-//!     last_seen: i64,
-//! }
+//! struct UserCollConf;
 //!
-//! impl Model for User {
+//! impl CollectionConfig for UserCollConf {
 //!     fn collection_name() -> &'static str {
 //!         "user"
 //!     }
@@ -40,13 +36,24 @@
 //!     }
 //! }
 //!
+//! #[derive(Serialize, Deserialize, Debug, PartialEq)]
+//! struct User {
+//!     username: String,
+//!     last_seen: i64,
+//! }
+//!
+//! impl Model for User {
+//!     type CollConf = UserCollConf;
+//! }
+//!
 //! let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
 //! let client = Client::with_options(client_options)?;
 //! let db = client.database("mongodm_wayk_demo");
 //!
-//! let repository = db.repository::<User>();
-//! repository.sync_indexes().await?;
-//! // indexes are now synced in backend
+//! sync_indexes::<UserCollConf>(&db).await?;
+//! // indexes are now synced in backend for user collection
+//!
+//! let repository = db.repository::<User>(); // method provided by `ToRepository` trait
 //!
 //! let user = User {
 //!     username: String::from("David"),
@@ -90,15 +97,22 @@ pub mod operator;
 pub mod repository;
 
 pub use cursor::ModelCursor;
-pub use index::{Index, IndexOption, Indexes, SortOrder};
+pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
 pub use repository::Repository;
 
 // Re-export mongodb
 pub use mongodb as mongo;
+// Re-export bson
+pub use mongodb::bson;
 
-/// Define collection configuration and associated indexes. `Model` can't be made into a trait object.
+/// Associate a collection configuration
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
-    /// Collection name to use when creating a `mongodb::Collection` instance
+    type CollConf: CollectionConfig;
+}
+
+/// Define collection name, configuration and associated indexes.
+pub trait CollectionConfig {
+    /// Collection name to use when creating a `mongodb::Collection` instance.
     fn collection_name() -> &'static str;
 
     /// `mongodb::options::CollectionOptions` to be used when creating a `mongodb::Collection` instance.
@@ -110,6 +124,8 @@ pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
     }
 
     /// Configure how indexes should be created and synchronized for the associated collection.
+    ///
+    /// This method has a default implementation returning no index (only special `_id` index will be present).
     fn indexes() -> index::Indexes {
         index::Indexes::default()
     }

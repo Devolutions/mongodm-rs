@@ -1,4 +1,6 @@
-/// Statically check presence of field in a given type and stringify it.
+/// Statically check presence of field in a given struct and stringify it.
+///
+/// Note that it sadly won't work with `#[serde(rename = "...")]` and `#[serde(rename_all = "...")]`.
 ///
 /// # Example
 ///

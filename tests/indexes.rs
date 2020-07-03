@@ -2,21 +2,17 @@
 extern crate pretty_assertions;
 
 use mongodb::{bson::doc, options::ClientOptions, Client};
-use mongodm::{f, Index, IndexOption, Indexes, Model, ToRepository};
-use serde::{Deserialize, Serialize};
+use mongodm::{sync_indexes, CollectionConfig, Index, IndexOption, Indexes};
 
-#[derive(Serialize, Deserialize)]
-struct ModelOne {
-    field: String,
-}
+struct OneSyncCollConf;
 
-impl Model for ModelOne {
+impl CollectionConfig for OneSyncCollConf {
     fn collection_name() -> &'static str {
         "one_sync"
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(Index::new(f!(field in ModelOne)).with_option(IndexOption::Unique))
+        Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
     }
 }
 
@@ -29,12 +25,18 @@ async fn one_sync() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    let repository = db.repository::<ModelOne>();
-    repository.drop(None).await.unwrap();
-    repository.sync_indexes().await.unwrap();
+    db.collection(OneSyncCollConf::collection_name())
+        .drop(None)
+        .await
+        .unwrap();
+
+    sync_indexes::<OneSyncCollConf>(&db).await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
+        .run_command(
+            doc! { "listIndexes": OneSyncCollConf::collection_name() },
+            None,
+        )
         .await
         .unwrap();
 
@@ -69,54 +71,43 @@ async fn one_sync() {
     );
 }
 
-#[derive(Serialize, Deserialize)]
-struct ModelMultiple {
-    field: String,
-    last_seen: i64,
-}
+struct MultipleSyncCollConf;
 
-impl Model for ModelMultiple {
+impl CollectionConfig for MultipleSyncCollConf {
     fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
     fn indexes() -> Indexes {
         Indexes::new().with(
-            Index::new(f!(field in ModelMultiple))
-                .with_key(f!(last_seen in ModelMultiple))
+            Index::new("field")
+                .with_key("last_seen")
                 .with_option(IndexOption::Unique),
         )
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct ModelMultipleNoLastSeen {
-    field: String,
-}
+struct MultipleNoLastSeenCollConf;
 
-impl Model for ModelMultipleNoLastSeen {
+impl CollectionConfig for MultipleNoLastSeenCollConf {
     fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
     fn indexes() -> Indexes {
-        Indexes::new()
-            .with(Index::new(f!(field in ModelMultipleNoLastSeen)).with_option(IndexOption::Unique))
+        Indexes::new().with(Index::new("field").with_option(IndexOption::Unique))
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct ModelMultipleNotUnique {
-    field: String,
-}
+struct MultipleNotUniqueCollConf;
 
-impl Model for ModelMultipleNotUnique {
+impl CollectionConfig for MultipleNotUniqueCollConf {
     fn collection_name() -> &'static str {
         "multiple_sync"
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(Index::new(f!(field in ModelMultipleNotUnique)))
+        Indexes::new().with(Index::new("field"))
     }
 }
 
@@ -129,12 +120,18 @@ async fn multiple_sync() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    let repository = db.repository::<ModelMultiple>();
-    repository.drop(None).await.unwrap();
-    repository.sync_indexes().await.unwrap();
+    db.collection(MultipleSyncCollConf::collection_name())
+        .drop(None)
+        .await
+        .unwrap();
+
+    sync_indexes::<MultipleSyncCollConf>(&db).await.unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
+        .run_command(
+            doc! { "listIndexes": MultipleSyncCollConf::collection_name() },
+            None,
+        )
         .await
         .unwrap();
 
@@ -169,12 +166,15 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = db.repository::<ModelMultipleNoLastSeen>();
-
-    repository.sync_indexes().await.unwrap();
+    sync_indexes::<MultipleNoLastSeenCollConf>(&db)
+        .await
+        .unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
+        .run_command(
+            doc! { "listIndexes": MultipleNoLastSeenCollConf::collection_name() },
+            None,
+        )
         .await
         .unwrap();
 
@@ -208,12 +208,15 @@ async fn multiple_sync() {
         }
     );
 
-    let repository = db.repository::<ModelMultipleNotUnique>();
-
-    repository.sync_indexes().await.unwrap();
+    sync_indexes::<MultipleNotUniqueCollConf>(&db)
+        .await
+        .unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": repository.collection_name() }, None)
+        .run_command(
+            doc! { "listIndexes": MultipleNotUniqueCollConf::collection_name() },
+            None,
+        )
         .await
         .unwrap();
 
