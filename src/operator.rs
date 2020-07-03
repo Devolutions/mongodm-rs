@@ -106,6 +106,7 @@ declare_operator! { "Evaluation" ["https://docs.mongodb.com/manual/reference/ope
     Expr => "$expr",
     JsonSchema => "$jsonSchema",
     Mod => "$mod",
+    Modulo => "$mod",
     Regex => "$regex",
     Text => "$text",
     Where => "$where",
@@ -172,3 +173,185 @@ declare_operator! { "Modifiers" ["https://docs.mongodb.com/manual/reference/oper
 declare_operator! { "Bitwise (update)" ["https://docs.mongodb.com/manual/reference/operator/update/#bitwise"]:
     Bit => "$bit",
 }
+
+// Aggregation Pipeline Stages
+
+declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline"]:
+    AddFields => "$addFields",
+    Bucket => "$bucket",
+    BucketAuto => "$bucketAuto",
+    CollStats => "$collStatus",
+    Count => "$count",
+    Facet => "$facet",
+    GeoNear => "$geoNear",
+    GraphLookup => "$graphLookup",
+    Group => "$group",
+    IndexStats => "$indexStats",
+    Limit => "$limit",
+    ListSessions => "$listSessions",
+    Lookup => "$lookup",
+    Match => "$match",
+    Merge => "$merge",
+    Out => "$out",
+    PlanCacheStats => "$planCacheStatus",
+    Project => "$project",
+    Redact => "$redact",
+    ReplaceRoot => "$replaceRoot",
+    ReplaceWith => "$replaceWith",
+    Sample => "$sample",
+    Skip => "$skip",
+    SortByCount => "$sortByCount",
+    Unwind => "$unwind",
+    CurrentOp => "$currentOp",
+    ListLocalSessions => "$listLocalSessions",
+    FindAndModify => "$findAndModify",
+    Update => "$update",
+}
+
+// Aggregation Pipeline Operators
+
+declare_operator! { "Arithmetic Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#arithmetic-expression-operators"]:
+    Abs => "$abs",
+    Add => "$add",
+    Ceil => "$ceil",
+    Divide => "$divide",
+    Exp => "$exp",
+    Floor => "$floor",
+    Ln => "$ln",
+    Log => "$log",
+    Log10 => "$log10",
+    Multiply => "$multiply",
+    Pow => "$pow",
+    Power => "$pow",
+    Round => "$round",
+    Sqrt => "$sqrt",
+    SquareRoot => "$sqrt",
+    Substract => "$substract",
+    Trunc => "$trunc",
+    Truncate => "$truncate",
+}
+
+declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#array-expression-operators"]:
+    ArrayElemAt => "$arrayElemAt",
+    ArrayToObject => "$arrayToObject",
+    ConcatArrays => "$concatArrays",
+    Filter => "$filter",
+    IndexOfArray => "$indexOfArray",
+    IsArray => "$isArray",
+    Map => "$map",
+    ObjectToArray => "$objectToArray",
+    Range => "$range",
+    Reduce => "$reduce",
+    ReverseArray => "$reverseArray",
+    Zip => "$zip",
+}
+
+declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#comparison-expression-operators"]:
+    Compare => "$cmp",
+}
+
+declare_operator! { "Conditional Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#conditional-expression-operators"]:
+    Cond => "$cond",
+    IfNull => "$ifNull",
+    Switch => "$switch",
+}
+
+declare_operator! { "Date Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#date-expression-operators"]:
+    DateFromParts => "$dateFromParts",
+    DateFromString => "$dateFromString",
+    DateToParts => "$dateToParts",
+    DateToString => "$dateToString",
+    DayOfMonth => "$dayOfMonth",
+    DayOfWeek => "$dayOfWeek",
+    DayOfYear => "$dayOfYear",
+    Hour => "$hour",
+    IsoDayOfWeek => "$isoDayOfWeek",
+    IsoWeek => "$isoWeek",
+    IsoWeekYear => "$isoWeekYear",
+    Millisecond => "$millisecond",
+    Minute => "$minute",
+    Month => "$month",
+    Second => "$second",
+    ToDate => "$toDate",
+    Week => "$week",
+    Year => "$year",
+}
+
+declare_operator! { "Literal Expression Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#literal-expression-operator"]:
+    Literal => "$literal",
+}
+
+declare_operator! { "Object Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#object-expression-operators"]:
+    MergeObjects => "$mergeObjects",
+}
+
+declare_operator! { "Set Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#set-expression-operators"]:
+    AllElementsTrue => "$allElementsTrue",
+    AnyElementTrue => "$anyElementTrue",
+    SetDifference => "$setDifference",
+    SetEquals => "$setEquals",
+    SetIntersection => "$setIntersection",
+    SetIsSubset => "$setIsSubset",
+    SetUnion => "$setUnion",
+}
+
+declare_operator! { "String Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#string-expression-operators"]:
+    Concat => "$concat",
+    IndexOfBytes => "$indexOfBytes",
+    IndexOfCP => "$indexOfCP",
+    LeftTrim => "$ltrim",
+    RegexFind => "$regexFind",
+    RegexFindAll => "$regexFindAll",
+    RegexMatch => "$regexMatch",
+    RightTrim => "$rtrim",
+    Split => "$split",
+    StrLenBytes => "$strLenBytes",
+    StrCaseCmp => "$strcasecmp",
+    Substr => "$substr",
+    SubstrBytes => "$substrBytes",
+    SubstrCP => "$substrCP",
+    ToLower => "$toLower",
+    ToString => "$toString",
+    Trim => "$trim",
+    ToUpper => "$toUpper",
+}
+
+declare_operator! { "Trigonometry Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#trigonometry-expression-operators"]:
+    Sin => "$sin",
+    Cos => "$cos",
+    Tan => "$tan",
+    Asin => "$asin",
+    Acos => "$acos",
+    Atan => "$atan",
+    Atan2 => "$atan2",
+    Asinh => "$asinh",
+    Acosh => "$acosh",
+    Atanh => "$atanh",
+    DegreesToRadians => "$degreesToRadians",
+    RadiansToDegrees => "$radiansToDegrees",
+}
+
+declare_operator! { "Type Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#type-expression-operators"]:
+    Convert => "$convert",
+    ToBool => "$toBool",
+    ToDecimal => "$toDecimal",
+    ToDouble => "$toDouble",
+    ToInt => "$toInt",
+    ToLong => "$toLong",
+    ToObjectId => "$toObjectId",
+    BsonType => "$type",
+}
+
+declare_operator! { "Accumulators ($group)" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#accumulators-group"]:
+    Average => "$avg",
+    First => "$first",
+    Last => "$last",
+    StdDevPop => "$stdDevPop",
+    StdDevSamp => "$stdDevSamp",
+    Sum => "$sum",
+}
+
+declare_operator! { "Variable Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#variable-expression-operators"]:
+    Let => "$let",
+}
+
