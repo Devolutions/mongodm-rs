@@ -51,6 +51,142 @@ impl<M: Model> Repository<M> {
         mongodb::Collection::clone(&self.coll)
     }
 
+    /// Convert this repository to use another `Model`. Only compiles if both `Model::CollConf` are identicals.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// # async fn demo() -> Result<(), mongodb::error::Error> {
+    /// # use mongodm::mongo::{Client, options::ClientOptions};
+    /// # let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+    /// # let client = Client::with_options(client_options)?;
+    /// # let db = client.database("mongodm_wayk_demo");
+    /// use mongodm::{ToRepository, Model, CollectionConfig};
+    /// use mongodm::mongo::bson::doc;
+    /// use mongodm::f;
+    /// use serde::{Serialize, Deserialize};
+    ///
+    /// struct UserCollConf;
+    ///
+    /// impl CollectionConfig for UserCollConf {
+    ///     fn collection_name() -> &'static str {
+    ///         "cast_model"
+    ///     }
+    /// }
+    ///
+    /// // Latest schema currently in use
+    /// #[derive(Serialize, Deserialize)]
+    /// struct User {
+    ///     username: String,
+    ///     last_seen: i64,
+    /// }
+    ///
+    /// impl Model for User {
+    ///     type CollConf = UserCollConf;
+    /// }
+    ///
+    /// // Old schema
+    /// #[derive(Serialize, Deserialize)]
+    /// struct UserV1 {
+    ///     name: String,
+    ///     ls: i64,
+    /// }
+    ///
+    /// // Versionned version of our `User`
+    /// #[derive(Serialize, Deserialize)]
+    /// #[serde(untagged)]
+    /// enum UserVersionned {
+    ///     Last(User),
+    ///     V1(UserV1),
+    /// }
+    ///
+    /// impl Model for UserVersionned {
+    ///     type CollConf = UserCollConf; // same as the non-versionned version
+    /// }
+    ///
+    /// // We have some repository for `User`
+    /// let repo = db.repository::<User>();
+    ///
+    /// # let coll = repo.get_underlying();
+    /// # coll.drop(None).await?;
+    /// # coll.insert_one(doc!{ f!(name in UserV1): "Bernard", f!(ls in UserV1): 1500 }, None).await?;
+    /// // Assume the following document is stored: { "name": "Bernard", "ls": 1500 }
+    ///
+    /// // Following query should fails because the schema doesn't match
+    /// let err = repo.find_one(doc!{ f!(name in UserV1): "Bernard" }, None).await.err().unwrap();
+    /// assert_eq!(err.to_string(), "missing field `username`"); // serde deserialization error
+    ///
+    /// // We can get a repository for `UserVersionned` from our `Repository<User>`
+    /// // because `User::CollConf` == `UserVersionned::CollConf`
+    /// let repo_versionned = repo.cast_model::<UserVersionned>();
+    ///
+    /// // Our versionned model should match with the document
+    /// let ret = repo_versionned.find_one(doc!{ f!(name in UserV1): "Bernard" }, None).await?;
+    /// match ret {
+    ///     Some(UserVersionned::V1(UserV1 { name, ls: 1500 })) if name == "Bernard" => { /* success */ }
+    ///     _ => panic!("Expected document was missing"),
+    /// }
+    ///
+    /// # Ok(())
+    /// # }
+    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
+    /// # rt.block_on(demo());
+    /// ```
+    ///
+    /// Following code will fail to compile because `CollectionConfig` doesn't match.
+    ///
+    /// ```compile_fail
+    /// # async fn demo() -> Result<(), mongodb::error::Error> {
+    /// # use mongodm::mongo::{Client, options::ClientOptions};
+    /// # let client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
+    /// # let client = Client::with_options(client_options)?;
+    /// # let db = client.database("mongodm_wayk_demo");
+    /// use mongodm::{ToRepository, Model, CollectionConfig};
+    /// use serde::{Serialize, Deserialize};
+    ///
+    /// struct ACollConf;
+    ///
+    /// impl CollectionConfig for ACollConf {
+    ///     fn collection_name() -> &'static str { "a" }
+    /// }
+    ///
+    /// #[derive(Serialize, Deserialize)]
+    /// struct A;
+    ///
+    /// impl Model for A {
+    ///     type CollConf = ACollConf;
+    /// }
+    ///
+    /// struct BCollConf;
+    ///
+    /// impl CollectionConfig for BCollConf {
+    ///     fn collection_name() -> &'static str { "B" }
+    /// }
+    ///
+    /// #[derive(Serialize, Deserialize)]
+    /// struct B;
+    ///
+    /// impl Model for B {
+    ///     type CollConf = BCollConf;
+    /// }
+    ///
+    /// // Doesn't compile because `A` and `B` doesn't share the same `CollectionConfig`.
+    /// db.repository::<A>().cast_model::<B>();
+    /// # Ok(())
+    /// # }
+    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
+    /// # rt.block_on(demo());
+    /// ```
+    pub fn cast_model<OtherModel>(self) -> Repository<OtherModel>
+    where
+        OtherModel: Model<CollConf = M::CollConf>,
+    {
+        Repository {
+            coll: self.coll,
+            _pd: std::marker::PhantomData,
+        }
+    }
+
     /// Drops the underlying collection, deleting all data, users, and indexes stored inside.
     pub async fn drop(
         &self,
