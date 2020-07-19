@@ -7,12 +7,19 @@ use futures_core::Stream;
 use mongodb::bson::{from_bson, Bson};
 
 /// Streams the result of a query asynchronously for the given `Model`.
+#[cfg(not(feature = "sync-runtime"))]
 #[derive(Debug)]
 pub struct ModelCursor<M: Model> {
     inner: mongodb::Cursor,
     _pd: std::marker::PhantomData<M>,
 }
-
+#[cfg(feature = "sync-runtime")]
+#[derive(Debug)]
+pub struct ModelCursor<M: Model> {
+    inner: mongodb::sync::Cursor,
+    _pd: std::marker::PhantomData<M>,
+}
+#[cfg(not(feature = "sync-runtime"))]
 impl<M: Model> From<mongodb::Cursor> for ModelCursor<M> {
     fn from(inner: mongodb::Cursor) -> Self {
         Self {
@@ -21,7 +28,17 @@ impl<M: Model> From<mongodb::Cursor> for ModelCursor<M> {
         }
     }
 }
-
+#[cfg(feature = "sync-runtime")]
+impl<M: Model> From<mongodb::sync::Cursor> for ModelCursor<M> {
+    fn from(inner: mongodb::sync::Cursor) -> Self {
+        Self {
+            inner,
+            _pd: std::marker::PhantomData,
+        }
+    }
+}
+//NOTE(travis) is this needed for sync runtime
+#[cfg(not(feature = "sync-runtime"))]
 impl<M: Model + Unpin> Stream for ModelCursor<M> {
     type Item = mongodb::error::Result<M>;
 

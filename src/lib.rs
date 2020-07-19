@@ -142,7 +142,20 @@ pub trait ToRepository {
         options: mongodb::options::CollectionOptions,
     ) -> Repository<M>;
 }
+#[cfg(featurn = "sync-runtime")]
+impl ToRepository for mongodb::sync::Database {
+    fn repository<M: Model>(&self) -> Repository<M> {
+        Repository::new(self.clone())
+    }
 
+    fn repository_with_options<M: Model>(
+        &self,
+        options: mongodb::options::CollectionOptions,
+    ) -> Repository<M> {
+        Repository::new_with_options(self.clone(), options)
+    }
+}
+#[cfg(feature = "tokio-runtime")]
 impl ToRepository for mongodb::Database {
     fn repository<M: Model>(&self) -> Repository<M> {
         Repository::new(self.clone())
