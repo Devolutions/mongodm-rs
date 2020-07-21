@@ -11,7 +11,7 @@ categories = ["database"]
 readme = "README.md"
 
 [dependencies]
-mongodb = { version = "1", features = ["sync"], default-features = false}
+mongodb = { version = "1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 
@@ -20,7 +20,7 @@ pretty_assertions = "0.6"
 futures-util = "0.3"
 
 [features]
-default = ["sync-runtime"]
+default = []
 sync-runtime = ["mongodb/sync"]
 tokio-runtime = ["mongodb/tokio-runtime"]
 async-std-runtime = ["mongodb/async-std-runtime"]
