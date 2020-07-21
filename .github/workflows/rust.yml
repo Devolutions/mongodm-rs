@@ -16,7 +16,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Check sync
+      run: cargo check --verbose --features sync
+    - name: Check async
+      run: cargo check --verbose --features tokio-runtime
+    - name: Formatting
+      run: cargo fmt -- --check
+    - name: Run tests sync
+      run: cargo test --verbose --features sync
+    - name: Run tests async
+      run: cargo test --verbose --features tokio-runtime
