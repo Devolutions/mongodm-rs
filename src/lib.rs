@@ -88,6 +88,7 @@
 #[macro_use]
 #[cfg(test)]
 extern crate pretty_assertions;
+pub extern crate mongodb;
 
 mod macros;
 
@@ -104,6 +105,8 @@ pub use repository::Repository;
 pub use mongodb as mongo;
 // Re-export bson
 pub use mongodb::bson;
+// Re-export bson macros
+pub use mongodb::bson::{doc, bson};
 
 /// Associate a collection configuration
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
