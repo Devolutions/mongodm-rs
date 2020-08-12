@@ -88,7 +88,6 @@
 #[macro_use]
 #[cfg(test)]
 extern crate pretty_assertions;
-pub extern crate mongodb;
 
 mod macros;
 
@@ -174,7 +173,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{ModelCursor, Repository, ToRepository, Model, CollectionConfig, SortOrder, Indexes, Index, IndexOption, sync_indexes, field, f, operator::*};
     #[doc(no_inline)]
-    pub use crate::mongodb::{
+    pub use crate::mongo::{
         Client as MongoClient,
         Database as MongoDatabase,
         Cursor as MongoCursor,
@@ -243,7 +242,7 @@ pub mod prelude {
         },
     };
     #[doc(no_inline)]
-    pub use crate::mongodb::bson::{
+    pub use crate::mongo::bson::{
         doc,
         bson,
         Bson,
