@@ -14,11 +14,11 @@ readme = "README.md"
 mongodb = { version = "1", features = ["tokio-runtime"] }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
+futures-util = "0.3"
 
 [dev-dependencies]
 tokio = "0.2"
 pretty_assertions = "0.6"
-futures-util = "0.3"
 
 [features]
 default = ["tokio-runtime"]
