@@ -104,6 +104,8 @@ pub use repository::Repository;
 pub use mongodb as mongo;
 // Re-export bson
 pub use mongodb::bson;
+// Re-export bson macros
+pub use mongodb::bson::{doc, bson};
 
 /// Associate a collection configuration
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
@@ -154,4 +156,110 @@ impl ToRepository for mongodb::Database {
     ) -> Repository<M> {
         Repository::new_with_options(self.clone(), options)
     }
+}
+
+/// Contains everything you need to use MongODM.
+///
+/// It expose the underlying `mongodb` members prefixed by **Mongo** in an attempt
+/// to reduce the risk of conflict, considering the large amount of members
+/// exported by the `mongodb` driver.
+///
+/// ```rust
+/// use mongodm::prelude::*;
+///
+/// // ...
+/// ```
+pub mod prelude {
+    #[doc(no_inline)]
+    pub use crate::{ModelCursor, Repository, Model, CollectionConfig, SortOrder, Indexes, Index, IndexOption, field, f, operator::*};
+    #[doc(no_inline)]
+    pub use crate::ToRepository as _;
+    #[doc(no_inline)]
+    pub use crate::mongo::{
+        Client as MongoClient,
+        Database as MongoDatabase,
+        Cursor as MongoCursor,
+        Collection as MongoCollection,
+        options::{
+            AggregateOptions as MongoAggregateOptions,
+            ClientOptions as MongoClientOptions,
+            Collation as MongoCollation,
+            CollectionOptions as MongoCollectionOptions,
+            CountOptions as MongoCountOptions,
+            CreateCollectionOptions as MongoCreateCollectionOptions,
+            Credential as MongoCredential,
+            DatabaseOptions as MongoDatabaseOptions,
+            DeleteOptions as MongoDeleteOptions,
+            DistinctOptions as MongoDistinctOptions,
+            DriverInfo as MongoDriverInfo,
+            DropCollectionOptions as MongoDropCollectionOptions,
+            DropDatabaseOptions as MongoDropDatabaseOptions,
+            EstimatedDocumentCountOptions as MongoEstimatedDocumentCountOptions,
+            FindOneAndDeleteOptions as MongoFindOneAndDeleteOptions,
+            FindOneAndReplaceOptions as MongoFindOneAndReplaceOptions,
+            FindOneAndUpdateOptions as MongoFindOneAndUpdateOptions,
+            FindOneOptions as MongoFindOneOptions,
+            FindOptions as MongoFindOptions,
+            InsertManyOptions as MongoInsertManyOptions,
+            InsertOneOptions as MongoInsertOneOptions,
+            ListCollectionsOptions as MongoListCollectionsOptions,
+            ListDatabasesOptions as MongoListDatabasesOptions,
+            ReadConcern as MongoReadConcern,
+            ReadPreferenceOptions as MongoReadPreferenceOptions,
+            ReplaceOptions as MongoReplaceOptions,
+            StreamAddress as MongoStreamAddress,
+            TlsOptions as MongoTlsOptions,
+            UpdateOptions as MongoUpdateOptions,
+            WriteConcern as MongoWriteConcern,
+            Acknowledgment as MongoAcknowledgment,
+            AuthMechanism as MongoAuthMechanism,
+            CursorType as MongoCursorType,
+            Hint as MongoHint,
+            ReadConcernLevel as MongoReadConcernLevel,
+            ReadPreference as MongoReadPreference,
+            ReturnDocument as MongoReturnDocument,
+            SelectionCriteria as MongoSelectionCriteria,
+            Tls as MongoTls,
+            UpdateModifications as MongoUpdateModifications,
+            ValidationAction as MongoValidationAction,
+            ValidationLevel as MongoValidationLevel,
+            Predicate as MongoPredicate,
+            TagSet as MongoTagSet,
+        },
+        results::{
+            DeleteResult as MongoDeleteResult,
+            InsertManyResult as MongoInsertManyResult,
+            InsertOneResult as MongoInsertOneResult,
+            UpdateResult as MongoUpdateResult,
+        },
+        error::{
+            Error as MongoError,
+            WriteError as MongoWriteError,
+            WriteConcernError as MongoWriteConcernError,
+            CommandError as MongoCommandError,
+            BulkWriteError as MongoBulkWriteError,
+            BulkWriteFailure as MongoBulkWriteFailure,
+            ErrorKind as MongoErrorKind,
+            WriteFailure as MongoWriteFailure,
+        },
+    };
+    #[doc(no_inline)]
+    pub use crate::mongo::bson::{
+        doc,
+        bson,
+        Bson,
+        oid::ObjectId,
+        from_bson,
+        to_bson,
+        Document as BsonDocument,
+        DateTime as BsonDateTime,
+        ser::Error as BsonSerError,
+        de::Error as BsonDeError,
+    };
+    #[doc(no_inline)]
+    pub use futures_core::Stream;
+    #[doc(no_inline)]
+    pub use futures_util::StreamExt as _;
+    #[doc(no_inline)]
+    pub use futures_util::FutureExt as _;
 }
