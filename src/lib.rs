@@ -171,7 +171,9 @@ impl ToRepository for mongodb::Database {
 /// ```
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{ModelCursor, Repository, ToRepository, Model, CollectionConfig, SortOrder, Indexes, Index, IndexOption, sync_indexes, field, f, operator::*};
+    pub use crate::{ModelCursor, Repository, Model, CollectionConfig, SortOrder, Indexes, Index, IndexOption, field, f, operator::*};
+    #[doc(no_inline)]
+    pub use crate::ToRepository as _;
     #[doc(no_inline)]
     pub use crate::mongo::{
         Client as MongoClient,
@@ -257,5 +259,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use futures_core::Stream;
     #[doc(no_inline)]
-    pub use futures_util::{StreamExt, FutureExt};
+    pub use futures_util::StreamExt as _;
+    #[doc(no_inline)]
+    pub use futures_util::FutureExt as _;
 }
