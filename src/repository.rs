@@ -12,10 +12,19 @@ use mongodb::results::*;
 ///
 /// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
 /// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Repository<M: Model> {
     coll: mongodb::Collection,
     _pd: std::marker::PhantomData<M>,
+}
+
+impl<M: Model> Clone for Repository<M> {
+    fn clone(&self) -> Self {
+        Self {
+            coll: self.coll.clone(),
+            _pd: std::marker::PhantomData
+        }
+    }
 }
 
 impl<M: Model> Repository<M> {
