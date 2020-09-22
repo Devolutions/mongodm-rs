@@ -22,7 +22,7 @@ impl<M: Model> Clone for Repository<M> {
     fn clone(&self) -> Self {
         Self {
             coll: self.coll.clone(),
-            _pd: std::marker::PhantomData
+            _pd: std::marker::PhantomData,
         }
     }
 }
