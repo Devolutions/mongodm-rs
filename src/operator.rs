@@ -354,4 +354,3 @@ declare_operator! { "Accumulators ($group)" ["https://docs.mongodb.com/manual/re
 declare_operator! { "Variable Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#variable-expression-operators"]:
     Let => "$let",
 }
-
