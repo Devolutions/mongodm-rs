@@ -11,7 +11,7 @@ categories = ["database"]
 readme = "README.md"
 
 [dependencies]
-mongodb = { version = "1.1", features = ["tokio-runtime"] }
+mongodb = { version = "^1.1", default-features = false }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
