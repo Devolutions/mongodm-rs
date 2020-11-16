@@ -303,6 +303,8 @@ declare_operator! { "String Expression Operators" ["https://docs.mongodb.com/man
     RegexFind => "$regexFind",
     RegexFindAll => "$regexFindAll",
     RegexMatch => "$regexMatch",
+    ReplaceOne => "$replaceOne",
+    ReplaceAll => "$replaceAll",
     RightTrim => "$rtrim",
     Split => "$split",
     StrLenBytes => "$strLenBytes",
