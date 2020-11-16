@@ -985,7 +985,7 @@ dependencies = [
 
 [[package]]
 name = "mongodm"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "futures-core",
  "futures-util",
