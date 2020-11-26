@@ -24,7 +24,9 @@
 ///                 { field!(bar in MyModel): { GreaterThan: 100 } },
 ///                 { field!(lorem in MyModel): "ipsum" }
 ///             ]
-///         }
+///         },
+///         // dollar and double dollar signs can inserted by prefixing with @
+///         { field!(@foo in MyModel): field!(@@bar in MyModel) }
 ///     ]
 /// };
 ///
@@ -37,7 +39,8 @@
 ///                 { "bar": { "$gt": 100 } },
 ///                 { "lorem": "ipsum" }
 ///             ]
-///         }
+///         },
+///         { "$foo": "$$bar" }
 ///     ]
 /// };
 ///
@@ -68,6 +71,20 @@ macro_rules! field {
         };
         stringify!($field)
     }};
+    ( @ $field:ident in $type:path ) => {{
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn() = || {
+            let $type { $field: _, .. };
+        };
+        concat!("$", stringify!($field))
+    }};
+    ( @ @ $field:ident in $type:path ) => {{
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn() = || {
+            let $type { $field: _, .. };
+        };
+        concat!("$$", stringify!($field))
+    }};
 }
 
 /// Shorthand for `field!`.
@@ -94,7 +111,9 @@ macro_rules! field {
 ///                 { f!(bar in MyModel): { GreaterThan: 100 } },
 ///                 { f!(lorem in MyModel): "ipsum" }
 ///             ]
-///         }
+///         },
+///         // dollar and double dollar signs can inserted by prefixing with @
+///         { f!(@foo in MyModel): f!(@@bar in MyModel) }
 ///     ]
 /// };
 ///
@@ -107,7 +126,8 @@ macro_rules! field {
 ///                 { "bar": { "$gt": 100 } },
 ///                 { "lorem": "ipsum" }
 ///             ]
-///         }
+///         },
+///         { "$foo": "$$bar" }
 ///     ]
 /// };
 ///
@@ -118,5 +138,11 @@ macro_rules! field {
 macro_rules! f {
     ( $field:ident in $type:path ) => {{
         $crate::field!($field in $type)
+    }};
+    ( @ $field:ident in $type:path ) => {{
+        $crate::field!( @ $field in $type)
+    }};
+    ( @ @ $field:ident in $type:path ) => {{
+        $crate::field!( @ @ $field in $type)
     }};
 }
