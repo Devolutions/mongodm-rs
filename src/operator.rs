@@ -298,7 +298,7 @@ declare_operator! { "Set Expression Operators" ["https://docs.mongodb.com/manual
 declare_operator! { "String Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#string-expression-operators"]:
     Concat => "$concat",
     IndexOfBytes => "$indexOfBytes",
-    IndexOfCP => "$indexOfCP",
+    IndexOfCp => "$indexOfCP",
     LeftTrim => "$ltrim",
     RegexFind => "$regexFind",
     RegexFindAll => "$regexFindAll",
@@ -311,7 +311,7 @@ declare_operator! { "String Expression Operators" ["https://docs.mongodb.com/man
     StrCaseCmp => "$strcasecmp",
     Substr => "$substr",
     SubstrBytes => "$substrBytes",
-    SubstrCP => "$substrCP",
+    SubstrCp => "$substrCP",
     ToLower => "$toLower",
     ToString => "$toString",
     Trim => "$trim",
