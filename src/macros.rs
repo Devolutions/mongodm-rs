@@ -207,4 +207,3 @@ macro_rules! f {
         $crate::field!( @ @ ( $field in $type ) . $( $rest ).+ )
     }};
 }
-

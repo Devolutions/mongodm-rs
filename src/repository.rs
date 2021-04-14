@@ -1,10 +1,7 @@
 //! Repositories are abstraction over a specific mongo collection for a given `Model`
 
 use crate::{CollectionConfig, Model};
-use mongodb::bson::from_bson;
-use mongodb::bson::to_bson;
-use mongodb::bson::Bson;
-use mongodb::bson::Document;
+use mongodb::bson::{from_bson, to_bson, Bson, Document};
 use mongodb::options::*;
 use mongodb::results::*;
 

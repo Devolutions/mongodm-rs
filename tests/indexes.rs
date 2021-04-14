@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::bson::doc;
+use mongodb::options::ClientOptions;
+use mongodb::Client;
 use mongodm::{sync_indexes, CollectionConfig, Index, IndexOption, Indexes};
 
 struct OneSyncCollConf;
