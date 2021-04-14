@@ -2,7 +2,9 @@
 extern crate pretty_assertions;
 
 use futures_util::StreamExt;
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::bson::doc;
+use mongodb::options::ClientOptions;
+use mongodb::Client;
 use mongodm::operator::*;
 use mongodm::{
     f, sync_indexes, CollectionConfig, Index, IndexOption, Indexes, Model, ToRepository,

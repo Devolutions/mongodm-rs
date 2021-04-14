@@ -1,10 +1,7 @@
 //! Indexes are used for efficient mongo queries.
 
 use crate::CollectionConfig;
-use mongodb::bson::doc;
-use mongodb::bson::from_bson;
-use mongodb::bson::Bson;
-use mongodb::bson::Document;
+use mongodb::bson::{doc, from_bson, Bson, Document};
 use mongodb::options::*;
 use mongodb::Database;
 use serde::Deserialize;
