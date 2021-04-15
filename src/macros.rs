@@ -80,9 +80,9 @@
 /// If the field doesn't exist, compilation will fail.
 ///
 /// ```compile_fail
-/// use mongodm::mongo::bson::doc;
-/// use mongodm::field;
-///
+///# use mongodm::mongo::bson::doc;
+///# use mongodm::field;
+///#
 /// struct MyModel {
 ///     foo: i64,
 ///     bar: Bar,
@@ -94,9 +94,40 @@
 ///
 /// // Doesn't compile because `baz` isn't a member of `MyModel`
 /// doc! { field!(baz in MyModel): 0 };
+/// ```
 ///
+/// ```compile_fail
+///# use mongodm::mongo::bson::doc;
+///# use mongodm::field;
+///#
+///# struct MyModel {
+///#     foo: i64,
+///#     bar: Bar,
+///# }
+///#
+///# struct Bar {
+///#     baz: i64,
+///# }
+///#
 /// // Doesn't compile because `foo` isn't a member of `Bar`
 /// doc! { field!((bar in MyModel).(foo in Bar)): 0 };
+/// ```
+///
+/// ```compile_fail
+///# use mongodm::mongo::bson::doc;
+///# use mongodm::field;
+///#
+///# struct MyModel {
+///#     foo: i64,
+///#     bar: Bar,
+///# }
+///#
+///# struct Bar {
+///#     baz: i64,
+///# }
+///#
+/// // Doesn't compile because `foo` isn't a `Bar`
+/// doc! { field!((foo in MyModel).(baz in Bar)): 0 };
 /// ```
 #[macro_export]
 macro_rules! field {
@@ -112,27 +143,33 @@ macro_rules! field {
         const _: fn() = || {
             let $type { $field: _, .. };
         };
-        concat!("$", stringify!($field))
+        concat!( "$", stringify!($field) )
     }};
     ( @ @ $field:ident in $type:path ) => {{
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn() = || {
             let $type { $field: _, .. };
         };
-        concat!("$$", stringify!($field))
+        concat!( "$$", stringify!( $field ) )
     }};
     ( ( $field:ident in $type:path ) )  => {{
         $crate::field!( $field in $type )
     }};
-    // FIXME: ideally we want a compile-time string instead of format!
-    ( ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        format!("{}.{}", $crate::field!( $field in $type ), $crate::field!( $( $rest ).+ ))
+    // FIXME: ideally we want a compile-time string instead of format! (causing heap allocation,
+    // and returning a String instead of string literal)
+    ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) $( . $rest:tt )* ) => {{
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: $type2| {};
+            takes_type2(a.$field);
+        };
+        format!( "{}.{}", $crate::field!( $field in $type ), $crate::field!( ( $field2 in $type2 ) $( . $rest )* ) )
     }};
     ( @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        format!("${}.{}", $crate::field!( $field in $type ), $crate::field!( $( $rest ).+ ))
+        format!( "${}", $crate::field!( ( $field in $type ) . $( $rest ).+ ) )
     }};
     ( @ @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        format!("$${}.{}", $crate::field!( $field in $type ), $crate::field!( $( $rest ).+ ))
+        format!( "$${}", $crate::field!( ( $field in $type ) . $( $rest ).+ ) )
     }};
 }
 
