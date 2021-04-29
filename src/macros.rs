@@ -244,3 +244,48 @@ macro_rules! f {
         $crate::field!( @ @ ( $field in $type ) . $( $rest ).+ )
     }};
 }
+
+#[macro_export]
+macro_rules! pipeline {
+    // Last key-value with trailing comma
+    (@stages $vec:ident $key:ident : $value:tt ,) => {{
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+    }};
+
+    // Last key-value without trailing comma
+    (@stages $vec:ident $key:ident : $value:tt) => {{
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+    }};
+
+    // key-value + rest
+    (@stages $vec:ident $key:ident : $value:tt , $($rest:tt)*) => {{
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+        pipeline!(@stages $vec $($rest)*);
+    }};
+
+    // Last expr with trailing comma
+    (@stages $vec:ident $stage:expr ,) => {{
+        pipeline!(@stage $vec $stage);
+    }};
+
+    // Last expr without trailing comma
+    (@stages $vec:ident $stage:expr) => {{
+        pipeline!(@stage $vec $stage);
+    }};
+
+    // expr + rest
+    (@stages $vec:ident $stage:expr , $($rest:tt)*) => {{
+        pipeline!(@stage $vec $stage);
+        pipeline!(@stages $vec $($rest)*);
+    }};
+
+    (@stage $vec:ident $stage:expr ) => {{
+        $vec.push($crate::mongo::bson::Document::from($stage));
+    }};
+
+    ($($tt:tt)*)=> {{
+        let mut vec = vec![];
+        pipeline!(@stages vec $($tt)*);
+        vec
+    }};
+}

@@ -224,7 +224,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
         f, field, operator::*, CollectionConfig, Index, IndexOption, Indexes, Model, ModelCursor,
-        Repository, SortOrder,
+        Repository, SortOrder, pipeline
     };
     #[doc(no_inline)]
     pub use futures_core::Stream;
