@@ -225,7 +225,7 @@ macro_rules! field {
     ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
         $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
     };
-    // FIXME: Add rules to allow nesting Vec<>
+    // FIXME: Add rules to allow nesting Vec<> and Option<>
 
     ( $($rest:tt)* ) => {{
         $crate::field! { @check $($rest)* }
