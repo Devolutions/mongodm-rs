@@ -72,6 +72,11 @@
 /// );
 ///
 /// assert_eq!(
+///     doc! { field!((bar in Foo).(baz in Bar).(dolor in Baz)): "sit amet" },
+///     doc! { "bar.baz.dolor": "sit amet" },
+/// );
+///
+/// assert_eq!(
 ///     doc! { field!(@@(bar in Foo).(baz in Bar).(dolor in Baz)): "sit amet" },
 ///     doc! { "$$bar.baz.dolor": "sit amet" },
 /// );
@@ -129,6 +134,27 @@
 /// // Doesn't compile because `foo` isn't a `Bar`
 /// doc! { field!((foo in MyModel).(baz in Bar)): 0 };
 /// ```
+/// ```compile_fail
+///# use mongodm::mongo::bson::doc;
+///# use mongodm::field;
+///#
+///# struct MyModel {
+///#     foo: i64,
+///#     bar: Bar,
+///# }
+///#
+///# struct Bar {
+///#     baz: i64,
+///#     third: Third,
+///# }
+///#
+///# struct Third {
+///#     a: String,
+///# }
+///#
+///# doc! { field!((bar in MyModel).(third in Bar).@@(b in Third)): 0 };
+/// ```
+/*
 #[macro_export]
 macro_rules! field {
     ( $field:ident in $type:path ) => {{
@@ -153,10 +179,14 @@ macro_rules! field {
         concat!( "$$", stringify!( $field ) )
     }};
     ( ( $field:ident in $type:path ) )  => {{
-        $crate::field!( $field in $type )
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn() = || {
+            let $type { $field: _, .. };
+        };
+        stringify!( $field )
     }};
     // FIXME: ideally we want a compile-time string instead of format! (causing heap allocation,
-    // and returning a String instead of string literal)
+    //        and returning a String instead of string literal)
     ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) $( . $rest:tt )* ) => {{
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn($type) = |a: $type| {
@@ -170,6 +200,84 @@ macro_rules! field {
     }};
     ( @ @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
         format!( "$${}", $crate::field!( ( $field in $type ) . $( $rest ).+ ) )
+    }};
+}
+*/
+#[macro_export]
+macro_rules! field {
+    ( @string $field:ident in $type:path ) => {
+        stringify!($field)
+    };
+    ( @string @ $field:ident in $type:path ) => {
+        concat!( "$", stringify!($field) )
+    };
+    ( @string @ @ $field:ident in $type:path ) => {
+        concat!( "$$", stringify!( $field ) )
+    };
+    ( @string ( $field:ident in $type:path ) ) => {
+        stringify!($field)
+    };
+    ( @string @ ( $field:ident in $type:path ) ) => {
+        concat!( "$", stringify!($field) )
+    };
+    ( @string @ @ ( $field:ident in $type:path ) ) => {
+        concat!( "$$", stringify!( $field ) )
+    };
+    ( @string ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
+    };
+    ( @string @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( "$", stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
+    };
+    ( @string @ @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( "$$", stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
+    };
+    
+    ( @check $field:ident in $type:path ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn() = || {
+            let $type { $field: _, .. };
+        };
+    };
+    ( @check @ $field:ident in $type:path ) => { $crate::field!(@check $field in $type) };
+    ( @check @ @ $field:ident in $type:path ) => { $crate::field!(@check $field in $type) };
+    ( @check ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
+    ( @check @ ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
+    ( @check @ @ ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
+    ( @check ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: $type2| {};
+            takes_type2(a.$field);
+        };
+        $crate::field!(@check $field in $type);
+        $crate::field!(@check $field2 in $type2);
+    };
+    ( @check ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        #[allow(unknown_lints, unneeded_field_pattern)]
+        const _: fn($type) = |a: $type| {
+            let takes_type2 = |_: $type2| {};
+            takes_type2(a.$field);
+        };
+        $crate::field!(@check $field in $type);
+        $crate::field!(@check ( $field2 in $type2 ) . $($rest)+)
+    };
+    ( @check @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) )
+    };
+    ( @check @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
+    };
+    ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) )
+    };
+    ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
+    };
+
+    ( $($rest:tt)* ) => {{
+        $crate::field! { @check $($rest)* }
+        $crate::field! { @string $($rest)* }
     }};
 }
 
@@ -222,40 +330,74 @@ macro_rules! field {
 /// ```
 #[macro_export]
 macro_rules! f {
-    ( $field:ident in $type:path ) => {{
-        $crate::field!($field in $type)
-    }};
-    ( @ $field:ident in $type:path ) => {{
-        $crate::field!( @ $field in $type)
-    }};
-    ( @ @ $field:ident in $type:path ) => {{
-        $crate::field!( @ @ $field in $type)
-    }};
-    ( ( $field:ident in $type:path ) )  => {{
-        $crate::field!( ( $field in $type ) )
-    }};
-    ( ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        $crate::field!( ( $field in $type ) . $( $rest ).+ )
-    }};
-    ( @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        $crate::field!( @ ( $field in $type ) . $( $rest ).+ )
-    }};
-    ( @ @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        $crate::field!( @ @ ( $field in $type ) . $( $rest ).+ )
-    }};
+    ( $( $tt:tt )* ) => { $crate::field! { $( $tt )* } }
 }
 
+/// Helper to build aggregation pipelines.
+/// Return a Vec<Document> as expected by the aggregate function.
+///
+/// # Example
+///
+/// ```
+/// use mongodm::prelude::*;
+///
+/// struct User {
+///     _id: ObjectId,
+///     name: String,
+/// }
+///
+/// struct Session {
+///     user_id: ObjectId,
+/// }
+///
+/// // Using the pipeline! helper :
+/// let a = pipeline! [
+///     Match: { f!(name in User): "John" },
+///     Lookup {
+///         From: "sessions",
+///         As: "sessions",
+///         LocalField: f!(_id in User),
+///         ForeignField: f!(user_id in Session),
+///     }
+/// ];
+///
+/// // Without pipeline helper :
+/// let b = vec![
+///     doc! { "$match": { f!(name in User): "John" } },
+///     Lookup {
+///         From: "sessions",
+///         As: "sessions",
+///         LocalField: f!(_id in User),
+///         ForeignField: f!(user_id in Session),
+///     }.into(),
+/// ];
+///
+/// // Without any helpers :
+/// let c = vec![
+///     doc! { "$match": { "name": "John" } },
+///     doc! { "$lookup": {
+///         "from": "sessions",
+///         "as": "sessions",
+///         "localField": "_id",
+///         "foreignField": "user_id",
+///     } },
+/// ];
+///
+/// // Generated pipelines are identicals
+/// assert_eq!(a, b);
+/// assert_eq!(a, c);
+/// ```
 #[macro_export]
 macro_rules! pipeline {
     // Last key-value with trailing comma
-    (@stages $vec:ident $key:ident : $value:tt ,) => {{
+    (@stages $vec:ident $key:ident : $value:tt ,) => {
         $vec.push($crate::mongo::bson::doc! { $key : $value });
-    }};
+    };
 
     // Last key-value without trailing comma
-    (@stages $vec:ident $key:ident : $value:tt) => {{
+    (@stages $vec:ident $key:ident : $value:tt) => {
         $vec.push($crate::mongo::bson::doc! { $key : $value });
-    }};
+    };
 
     // key-value + rest
     (@stages $vec:ident $key:ident : $value:tt , $($rest:tt)*) => {{
@@ -264,14 +406,14 @@ macro_rules! pipeline {
     }};
 
     // Last expr with trailing comma
-    (@stages $vec:ident $stage:expr ,) => {{
+    (@stages $vec:ident $stage:expr ,) => {
         pipeline!(@stage $vec $stage);
-    }};
+    };
 
     // Last expr without trailing comma
-    (@stages $vec:ident $stage:expr) => {{
+    (@stages $vec:ident $stage:expr) => {
         pipeline!(@stage $vec $stage);
-    }};
+    };
 
     // expr + rest
     (@stages $vec:ident $stage:expr , $($rest:tt)*) => {{
@@ -279,9 +421,9 @@ macro_rules! pipeline {
         pipeline!(@stages $vec $($rest)*);
     }};
 
-    (@stage $vec:ident $stage:expr ) => {{
+    (@stage $vec:ident $stage:expr ) => {
         $vec.push($crate::mongo::bson::Document::from($stage));
-    }};
+    };
 
     ($($tt:tt)*)=> {{
         let mut vec = vec![];

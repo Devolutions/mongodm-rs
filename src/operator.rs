@@ -72,7 +72,7 @@ macro_rules! declare_operator {
             }
         }
     };
-    ($category:literal [ $doc_url:literal ] : $ty:ident => $mongo_operator:literal : $( $field:ident => $mongo_field:literal ),+) => {
+    ($category:literal [ $doc_url:literal ] : $ty:ident => $mongo_operator:literal [ $( $field:ident => $mongo_field:literal ),+ ]) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         #[doc="["]
         #[doc=$category]
@@ -237,19 +237,21 @@ declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/man
 }
 
 declare_operator! { "Lookup Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/#mongodb-pipeline-pipe.-lookup"]:
-    Lookup => "$lookup" :
+    Lookup => "$lookup" [
         From => "from",
+        As => "as",
         LocalField => "localField",
-        ForeignField => "foreignField",
-        As => "as"
+        ForeignField => "foreignField"
+    ]
 }
 
 declare_operator! { "Lookup Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/#mongodb-pipeline-pipe.-lookup"]:
-    LookupPipeline => "$lookup" :
+    LookupPipeline => "$lookup" [
         From => "from",
         As => "as",
         Let => "let",
         Pipeline => "pipeline"
+    ]
 }
 
 // Aggregation Pipeline Operators
@@ -282,12 +284,19 @@ declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manu
     Filter => "$filter",
     IndexOfArray => "$indexOfArray",
     IsArray => "$isArray",
-    Map => "$map",
     ObjectToArray => "$objectToArray",
     Range => "$range",
     Reduce => "$reduce",
     ReverseArray => "$reverseArray",
     Zip => "$zip",
+}
+
+declare_operator! { "Array Map Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/map/#mongodb-expression-exp.-map"]:
+    Map => "$map" [
+        Input => "input",
+        As => "as",
+        In => "in"
+    ]
 }
 
 declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#comparison-expression-operators"]:
@@ -300,10 +309,11 @@ declare_operator! { "Conditional Expression Operators" ["https://docs.mongodb.co
 }
 
 declare_operator! { "Conditional Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/cond/#mongodb-expression-exp.-cond"]:
-    Cond => "$cond" :
+    Cond => "$cond" [
         If => "if",
         Then => "then",
         Else => "else"
+    ]
 }
 
 declare_operator! { "Date Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#date-expression-operators"]:
