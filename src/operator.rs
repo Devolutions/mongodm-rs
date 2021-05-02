@@ -224,7 +224,6 @@ declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/man
     PlanCacheStats => "$planCacheStatus",
     Project => "$project",
     Redact => "$redact",
-    ReplaceRoot => "$replaceRoot",
     ReplaceWith => "$replaceWith",
     Sample => "$sample",
     Skip => "$skip",
@@ -234,6 +233,12 @@ declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/man
     ListLocalSessions => "$listLocalSessions",
     FindAndModify => "$findAndModify",
     Update => "$update",
+}
+
+declare_operator! { "ReplaceRoot Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/replaceRoot/"]:
+    ReplaceRoot => "$replaceRoot" [
+        NewRoot => "newRoot"
+    ]
 }
 
 declare_operator! { "Lookup Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/#mongodb-pipeline-pipe.-lookup"]:
