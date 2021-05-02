@@ -154,55 +154,6 @@
 ///#
 ///# doc! { field!((bar in MyModel).(third in Bar).@@(b in Third)): 0 };
 /// ```
-/*
-#[macro_export]
-macro_rules! field {
-    ( $field:ident in $type:path ) => {{
-        #[allow(unknown_lints, unneeded_field_pattern)]
-        const _: fn() = || {
-            let $type { $field: _, .. };
-        };
-        stringify!( $field )
-    }};
-    ( @ $field:ident in $type:path ) => {{
-        #[allow(unknown_lints, unneeded_field_pattern)]
-        const _: fn() = || {
-            let $type { $field: _, .. };
-        };
-        concat!( "$", stringify!($field) )
-    }};
-    ( @ @ $field:ident in $type:path ) => {{
-        #[allow(unknown_lints, unneeded_field_pattern)]
-        const _: fn() = || {
-            let $type { $field: _, .. };
-        };
-        concat!( "$$", stringify!( $field ) )
-    }};
-    ( ( $field:ident in $type:path ) )  => {{
-        #[allow(unknown_lints, unneeded_field_pattern)]
-        const _: fn() = || {
-            let $type { $field: _, .. };
-        };
-        stringify!( $field )
-    }};
-    // FIXME: ideally we want a compile-time string instead of format! (causing heap allocation,
-    //        and returning a String instead of string literal)
-    ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) $( . $rest:tt )* ) => {{
-        #[allow(unknown_lints, unneeded_field_pattern)]
-        const _: fn($type) = |a: $type| {
-            let takes_type2 = |_: $type2| {};
-            takes_type2(a.$field);
-        };
-        format!( "{}.{}", $crate::field!( $field in $type ), $crate::field!( ( $field2 in $type2 ) $( . $rest )* ) )
-    }};
-    ( @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        format!( "${}", $crate::field!( ( $field in $type ) . $( $rest ).+ ) )
-    }};
-    ( @ @ ( $field:ident in $type:path ) . $( $rest:tt ).+ ) => {{
-        format!( "$${}", $crate::field!( ( $field in $type ) . $( $rest ).+ ) )
-    }};
-}
-*/
 #[macro_export]
 macro_rules! field {
     ( @string $field:ident in $type:path ) => {
@@ -274,6 +225,7 @@ macro_rules! field {
     ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
         $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
     };
+    // FIXME: Add rules to allow nesting Vec<>
 
     ( $($rest:tt)* ) => {{
         $crate::field! { @check $($rest)* }
