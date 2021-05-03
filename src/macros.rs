@@ -354,10 +354,6 @@ macro_rules! pipeline {
 
 #[macro_export]
 macro_rules! pipeline_helper {
-    (@stage $vec:ident $stage:expr ) => {
-        $vec.push($crate::mongo::bson::Document::from($stage));
-    };
-
     // Last key-value with trailing comma
     ($vec:ident $key:ident : $value:tt ,) => {
         $vec.push($crate::mongo::bson::doc! { $key : $value });
@@ -376,17 +372,17 @@ macro_rules! pipeline_helper {
 
     // Last expr with trailing comma
     ($vec:ident $stage:expr ,) => {
-        $crate::pipeline_helper!(@stage $vec $stage);
+        $vec.push($crate::mongo::bson::Document::from($stage));
     };
 
     // Last expr without trailing comma
     ($vec:ident $stage:expr) => {
-        $crate::pipeline_helper!(@stage $vec $stage);
+        $vec.push($crate::mongo::bson::Document::from($stage));
     };
 
     // expr + rest
     ($vec:ident $stage:expr , $($rest:tt)*) => {{
-        $crate::pipeline_helper!(@stage $vec $stage);
+        $vec.push($crate::mongo::bson::Document::from($stage));
         $crate::pipeline_helper!($vec $($rest)*);
     }};
 }
