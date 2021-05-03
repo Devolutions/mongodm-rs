@@ -358,7 +358,7 @@ macro_rules! pipeline_helper {
         $vec.push($crate::mongo::bson::Document::from($stage));
     };
 
-       // Last key-value with trailing comma
+    // Last key-value with trailing comma
     ($vec:ident $key:ident : $value:tt ,) => {
         $vec.push($crate::mongo::bson::doc! { $key : $value });
     };
