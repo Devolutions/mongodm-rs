@@ -72,6 +72,35 @@ macro_rules! declare_operator {
             }
         }
     };
+    ($category:literal [ $doc_url:literal ] : $ty:ident => $mongo_operator:literal [ $( $field:ident => $mongo_field:literal ),+ ]) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[doc="["]
+        #[doc=$category]
+        #[doc="]("]
+        #[doc=$doc_url]
+        #[doc=") "]
+        #[doc="operator `"]
+        #[doc=$mongo_operator]
+        #[doc="`"]
+        #[allow(non_snake_case)]
+        pub struct $ty<$( $field ),+> where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
+            $( pub $field : $field ),+
+        }
+
+        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for $crate::mongo::bson::Document where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
+            fn from(l: $ty<$( $field ),+>) -> $crate::mongo::bson::Document {
+                $crate::mongo::bson::doc! { $mongo_operator: {
+                    $( $mongo_field : l.$field.into() ),+
+                } }
+            }
+        }
+
+        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for $crate::mongo::bson::Bson where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
+            fn from(l: $ty<$( $field ),+>) -> $crate::mongo::bson::Bson {
+                $crate::mongo::bson::Bson::Document(l.into())
+            }
+        }
+    };
     ($category:literal [ $doc_url:literal ] : $( $ty:ident => $mongo_operator:literal, )+ ) => {
         $( declare_operator! { $category [ $doc_url ] : $ty => $mongo_operator } )+
     };
@@ -189,14 +218,12 @@ declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/man
     IndexStats => "$indexStats",
     Limit => "$limit",
     ListSessions => "$listSessions",
-    Lookup => "$lookup",
     Match => "$match",
     Merge => "$merge",
     Out => "$out",
     PlanCacheStats => "$planCacheStatus",
     Project => "$project",
     Redact => "$redact",
-    ReplaceRoot => "$replaceRoot",
     ReplaceWith => "$replaceWith",
     Sample => "$sample",
     Skip => "$skip",
@@ -206,6 +233,30 @@ declare_operator! { "Aggregation pipeline stages" ["https://docs.mongodb.com/man
     ListLocalSessions => "$listLocalSessions",
     FindAndModify => "$findAndModify",
     Update => "$update",
+}
+
+declare_operator! { "ReplaceRoot Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/replaceRoot/"]:
+    ReplaceRoot => "$replaceRoot" [
+        NewRoot => "newRoot"
+    ]
+}
+
+declare_operator! { "Lookup Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/#mongodb-pipeline-pipe.-lookup"]:
+    Lookup => "$lookup" [
+        From => "from",
+        As => "as",
+        LocalField => "localField",
+        ForeignField => "foreignField"
+    ]
+}
+
+declare_operator! { "Lookup Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/lookup/#mongodb-pipeline-pipe.-lookup"]:
+    LookupPipeline => "$lookup" [
+        From => "from",
+        As => "as",
+        Let => "let",
+        Pipeline => "pipeline"
+    ]
 }
 
 // Aggregation Pipeline Operators
@@ -238,7 +289,6 @@ declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manu
     Filter => "$filter",
     IndexOfArray => "$indexOfArray",
     IsArray => "$isArray",
-    Map => "$map",
     ObjectToArray => "$objectToArray",
     Range => "$range",
     Reduce => "$reduce",
@@ -246,14 +296,29 @@ declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manu
     Zip => "$zip",
 }
 
+declare_operator! { "Array Map Operator" ["https://docs.mongodb.com/manual/reference/operator/aggregation/map/#mongodb-expression-exp.-map"]:
+    Map => "$map" [
+        Input => "input",
+        As => "as",
+        In => "in"
+    ]
+}
+
 declare_operator! { "Array Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#comparison-expression-operators"]:
     Compare => "$cmp",
 }
 
 declare_operator! { "Conditional Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#conditional-expression-operators"]:
-    Cond => "$cond",
     IfNull => "$ifNull",
     Switch => "$switch",
+}
+
+declare_operator! { "Conditional Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/cond/#mongodb-expression-exp.-cond"]:
+    Cond => "$cond" [
+        If => "if",
+        Then => "then",
+        Else => "else"
+    ]
 }
 
 declare_operator! { "Date Expression Operators" ["https://docs.mongodb.com/manual/reference/operator/aggregation/#date-expression-operators"]:
