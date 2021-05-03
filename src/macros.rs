@@ -183,7 +183,7 @@ macro_rules! field {
     ( @string @ @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
         concat!( "$$", stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
     };
-    
+
     ( @check $field:ident in $type:path ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn() = || {
