@@ -157,9 +157,9 @@
 /// ```
 #[macro_export]
 macro_rules! field {
-    ( $($rest:tt)* ) => {{
-        $crate::field_check_helper! { $($rest)* }
-        $crate::field_string_helper! { $($rest)* }
+    ( $($tt:tt)* ) => {{
+        $crate::field_check_helper! { $($tt)* }
+        $crate::field_string_helper! { $($tt)* }
     }};
 }
 
@@ -283,7 +283,10 @@ macro_rules! field_check_helper {
 /// ```
 #[macro_export]
 macro_rules! f {
-    ( $( $tt:tt )* ) => { $crate::field! { $( $tt )* } }
+    ( $($tt:tt)* ) => {{
+        $crate::field_check_helper! { $($tt)* }
+        $crate::field_string_helper! { $($tt)* }
+    }};
 }
 
 /// Helper to build aggregation pipelines.
