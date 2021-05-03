@@ -83,21 +83,21 @@ macro_rules! declare_operator {
         #[doc=$mongo_operator]
         #[doc="`"]
         #[allow(non_snake_case)]
-        pub struct $ty<$( $field ),+> where $( $field : Into<crate::mongo::bson::Bson> ),+ {
+        pub struct $ty<$( $field ),+> where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
             $( pub $field : $field ),+
         }
 
-        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for crate::mongo::bson::Document where $( $field : Into<crate::mongo::bson::Bson> ),+ {
-            fn from(l: $ty<$( $field ),+>) -> crate::mongo::bson::Document {
-                crate::mongo::bson::doc! { $mongo_operator: {
+        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for $crate::mongo::bson::Document where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
+            fn from(l: $ty<$( $field ),+>) -> $crate::mongo::bson::Document {
+                $crate::mongo::bson::doc! { $mongo_operator: {
                     $( $mongo_field : l.$field.into() ),+
                 } }
             }
         }
 
-        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for crate::mongo::bson::Bson where $( $field : Into<crate::mongo::bson::Bson> ),+ {
-            fn from(l: $ty<$( $field ),+>) -> crate::mongo::bson::Bson {
-                crate::mongo::bson::Bson::Document(l.into())
+        impl<$( $field ),+> ::core::convert::From<$ty<$( $field ),+>> for $crate::mongo::bson::Bson where $( $field : Into<$crate::mongo::bson::Bson> ),+ {
+            fn from(l: $ty<$( $field ),+>) -> $crate::mongo::bson::Bson {
+                $crate::mongo::bson::Bson::Document(l.into())
             }
         }
     };

@@ -152,85 +152,86 @@
 ///#     a: String,
 ///# }
 ///#
-///# doc! { field!((bar in MyModel).(third in Bar).@@(b in Third)): 0 };
+/// // Fail because `b` is not a field of `Third`
+/// doc! { field!((bar in MyModel).(third in Bar).(b in Third)): 0 };
 /// ```
 #[macro_export]
 macro_rules! field {
-    ( @string $field:ident in $type:path ) => {
-        stringify!($field)
-    };
-    ( @string @ $field:ident in $type:path ) => {
-        concat!( "$", stringify!($field) )
-    };
-    ( @string @ @ $field:ident in $type:path ) => {
-        concat!( "$$", stringify!( $field ) )
-    };
-    ( @string ( $field:ident in $type:path ) ) => {
-        stringify!($field)
-    };
-    ( @string @ ( $field:ident in $type:path ) ) => {
-        concat!( "$", stringify!($field) )
-    };
-    ( @string @ @ ( $field:ident in $type:path ) ) => {
-        concat!( "$$", stringify!( $field ) )
-    };
-    ( @string ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
-        concat!( stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
-    };
-    ( @string @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
-        concat!( "$", stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
-    };
-    ( @string @ @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
-        concat!( "$$", stringify!($field), ".", $crate::field!( @string $($rest).+ ) )
-    };
+    ( $($rest:tt)* ) => {{
+        $crate::field_check_helper! { $($rest)* }
+        $crate::field_string_helper! { $($rest)* }
+    }};
+}
 
-    ( @check $field:ident in $type:path ) => {
+#[macro_export]
+macro_rules! field_string_helper {
+    ( $field:ident in $type:path ) => {
+        stringify!($field)
+    };
+    ( @ $field:ident in $type:path ) => {
+        concat!( "$", stringify!($field) )
+    };
+    ( @ @ $field:ident in $type:path ) => {
+        concat!( "$$", stringify!( $field ) )
+    };
+    ( ( $field:ident in $type:path ) ) => {
+        stringify!($field)
+    };
+    ( ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
+    };
+    ( @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( "$", stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
+    };
+    ( @ @ ( $field:ident in $type:path ) $( . $rest:tt )+ ) => {
+        concat!( "$$", stringify!($field), ".", $crate::field_string_helper!($($rest).+) )
+    };
+}
+
+#[macro_export]
+macro_rules! field_check_helper {
+    ( $field:ident in $type:path ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn() = || {
             let $type { $field: _, .. };
         };
     };
-    ( @check @ $field:ident in $type:path ) => { $crate::field!(@check $field in $type) };
-    ( @check @ @ $field:ident in $type:path ) => { $crate::field!(@check $field in $type) };
-    ( @check ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
-    ( @check @ ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
-    ( @check @ @ ( $field:ident in $type:path ) ) => { $crate::field!(@check $field in $type) };
-    ( @check ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+    ( @ $field:ident in $type:path ) => { $crate::field_check_helper!($field in $type) };
+    ( @ @ $field:ident in $type:path ) => { $crate::field_check_helper!($field in $type) };
+    ( ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
+    ( @ ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
+    ( @ @ ( $field:ident in $type:path ) ) => { $crate::field_check_helper!($field in $type) };
+    ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn($type) = |a: $type| {
             let takes_type2 = |_: $type2| {};
             takes_type2(a.$field);
         };
-        $crate::field!(@check $field in $type);
-        $crate::field!(@check $field2 in $type2);
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!($field2 in $type2);
     };
-    ( @check ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+    ( ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
         #[allow(unknown_lints, unneeded_field_pattern)]
         const _: fn($type) = |a: $type| {
             let takes_type2 = |_: $type2| {};
             takes_type2(a.$field);
         };
-        $crate::field!(@check $field in $type);
-        $crate::field!(@check ( $field2 in $type2 ) . $($rest)+)
+        $crate::field_check_helper!($field in $type);
+        $crate::field_check_helper!(( $field2 in $type2 ) . $($rest)+)
     };
-    ( @check @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
-        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) )
+    ( @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+        $crate::field_check_helper!(( $field in $type ) . ( $field2 in $type2 ) )
     };
-    ( @check @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
-        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
+    ( @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        $crate::field_check_helper!(( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
     };
-    ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
-        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) )
+    ( @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) ) => {
+        $crate::field_check_helper!(( $field in $type ) . ( $field2 in $type2 ) )
     };
-    ( @check @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
-        $crate::field!(@check ( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
+    ( @ @ ( $field:ident in $type:path ) . ( $field2:ident in $type2:path ) . $($rest:tt)+ ) => {
+        $crate::field_check_helper!(( $field in $type ) . ( $field2 in $type2 ) . $($rest)+ )
     };
     // FIXME: Add rules to allow nesting Vec<> and Option<>
-
-    ( $($rest:tt)* ) => {{
-        $crate::field! { @check $($rest)* }
-        $crate::field! { @string $($rest)* }
-    }};
 }
 
 /// Shorthand for `field!`.
@@ -341,45 +342,48 @@ macro_rules! f {
 /// ```
 #[macro_export]
 macro_rules! pipeline {
-    // Last key-value with trailing comma
-    (@stages $vec:ident $key:ident : $value:tt ,) => {
-        $vec.push($crate::mongo::bson::doc! { $key : $value });
-    };
-
-    // Last key-value without trailing comma
-    (@stages $vec:ident $key:ident : $value:tt) => {
-        $vec.push($crate::mongo::bson::doc! { $key : $value });
-    };
-
-    // key-value + rest
-    (@stages $vec:ident $key:ident : $value:tt , $($rest:tt)*) => {{
-        $vec.push($crate::mongo::bson::doc! { $key : $value });
-        pipeline!(@stages $vec $($rest)*);
+    ($($tt:tt)*)=> {{
+        let mut vec = vec![];
+        $crate::pipeline_helper!(vec $($tt)*);
+        vec
     }};
+}
 
-    // Last expr with trailing comma
-    (@stages $vec:ident $stage:expr ,) => {
-        pipeline!(@stage $vec $stage);
-    };
-
-    // Last expr without trailing comma
-    (@stages $vec:ident $stage:expr) => {
-        pipeline!(@stage $vec $stage);
-    };
-
-    // expr + rest
-    (@stages $vec:ident $stage:expr , $($rest:tt)*) => {{
-        pipeline!(@stage $vec $stage);
-        pipeline!(@stages $vec $($rest)*);
-    }};
-
+#[macro_export]
+macro_rules! pipeline_helper {
     (@stage $vec:ident $stage:expr ) => {
         $vec.push($crate::mongo::bson::Document::from($stage));
     };
 
-    ($($tt:tt)*)=> {{
-        let mut vec = vec![];
-        pipeline!(@stages vec $($tt)*);
-        vec
+       // Last key-value with trailing comma
+    ($vec:ident $key:ident : $value:tt ,) => {
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+    };
+
+    // Last key-value without trailing comma
+    ($vec:ident $key:ident : $value:tt) => {
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+    };
+
+    // key-value + rest
+    ($vec:ident $key:ident : $value:tt , $($rest:tt)*) => {{
+        $vec.push($crate::mongo::bson::doc! { $key : $value });
+        $crate::pipeline_helper!($vec $($rest)*);
+    }};
+
+    // Last expr with trailing comma
+    ($vec:ident $stage:expr ,) => {
+        $crate::pipeline_helper!(@stage $vec $stage);
+    };
+
+    // Last expr without trailing comma
+    ($vec:ident $stage:expr) => {
+        $crate::pipeline_helper!(@stage $vec $stage);
+    };
+
+    // expr + rest
+    ($vec:ident $stage:expr , $($rest:tt)*) => {{
+        $crate::pipeline_helper!(@stage $vec $stage);
+        $crate::pipeline_helper!($vec $($rest)*);
     }};
 }
