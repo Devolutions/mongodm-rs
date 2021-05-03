@@ -163,6 +163,7 @@ macro_rules! field {
     }};
 }
 
+#[doc(hide)]
 #[macro_export]
 macro_rules! field_string_helper {
     ( $field:ident in $type:path ) => {
@@ -188,6 +189,7 @@ macro_rules! field_string_helper {
     };
 }
 
+#[doc(hide)]
 #[macro_export]
 macro_rules! field_check_helper {
     ( $field:ident in $type:path ) => {
@@ -352,6 +354,7 @@ macro_rules! pipeline {
     }};
 }
 
+#[doc(hide)]
 #[macro_export]
 macro_rules! pipeline_helper {
     // Last key-value with trailing comma
