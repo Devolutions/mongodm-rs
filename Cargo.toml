@@ -9,6 +9,7 @@ repository = "https://github.com/Devolutions/mongodm-rs"
 keywords = ["mongodb", "database", "nosql", "odm"]
 categories = ["database"]
 readme = "README.md"
+include = ["src/**/*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 mongodb = { version = "^1.2", default-features = false }
