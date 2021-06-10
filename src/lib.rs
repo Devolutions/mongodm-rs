@@ -220,16 +220,15 @@ pub mod prelude {
         Database as MongoDatabase,
     };
     #[doc(no_inline)]
-    pub use crate::ToRepository as _;
+    pub use crate::ToRepository;
     #[doc(no_inline)]
     pub use crate::{
         f, field, operator::*, pipeline, CollectionConfig, Index, IndexOption, Indexes, Model,
-        ModelCursor, Repository, SortOrder,
+        ModelCursor, Repository, SortOrder, sync_indexes,
+        mongo::Cursor,
     };
     #[doc(no_inline)]
-    pub use futures_core::Stream;
+    pub use futures_util::future::{BoxFuture, FutureExt};
     #[doc(no_inline)]
-    pub use futures_util::FutureExt as _;
-    #[doc(no_inline)]
-    pub use futures_util::StreamExt as _;
+    pub use futures_util::StreamExt;
 }
