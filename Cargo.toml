@@ -1,6 +1,6 @@
 [package]
 name = "mongodm"
-version = "0.7.1"
+version = "0.7.2"
 authors = ["Benoît CORTIER <benoit.cortier@fried-world.eu>"]
 edition = "2018"
 description = "A thin ODM layer for mongodb"
@@ -16,6 +16,7 @@ mongodb = { version = "^1.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
+typenum = "1.13.0"
 
 [dev-dependencies]
 tokio = "0.2"
