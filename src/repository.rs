@@ -15,12 +15,6 @@ pub struct BulkUpdate {
     pub options: Option<UpdateOptions>,
 }
 
-impl AsRef<BulkUpdate> for BulkUpdate {
-    fn as_ref(&self) -> &BulkUpdate {
-        &self
-    }
-}
-
 #[derive(Debug, Deserialize)]
 pub struct BulkUpdateResult {
     #[serde(rename = "n")]

@@ -172,7 +172,7 @@ impl ToRepository for mongodb::Database {
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::mongo::bson::{
-        de::Error as BsonDeError, doc, from_bson, oid::ObjectId, ser::Error as BsonSerError,
+        bson, de::Error as BsonDeError, doc, from_bson, oid::ObjectId, ser::Error as BsonSerError,
         to_bson, Bson, DateTime as BsonDateTime, Document as BsonDocument,
     };
     #[doc(no_inline)]

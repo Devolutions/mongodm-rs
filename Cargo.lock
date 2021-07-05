@@ -1095,7 +1095,6 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "tokio",
- "typenum",
 ]
 
 [[package]]
