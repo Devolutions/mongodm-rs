@@ -38,7 +38,7 @@ pub struct BulkUpdateUpsertResult {
 /// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
 #[derive(Debug)]
 pub struct Repository<M: Model> {
-    db: mongodb::Database,
+    db: mongodb::Database, // FIXME: temporary keep reference to database object for `bulk_update` operation
     coll: mongodb::Collection,
     _pd: std::marker::PhantomData<M>,
 }
