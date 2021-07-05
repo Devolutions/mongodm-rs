@@ -486,7 +486,7 @@ impl<M: Model> Repository<M> {
     {
         let updates = updates.borrow();
         let mut update_docs = Vec::with_capacity(updates.len());
-        for u in updates.into_iter() {
+        for u in updates {
             let u = u.borrow();
             let mut doc = doc! {
                 "q": &u.query,
