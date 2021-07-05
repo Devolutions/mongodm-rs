@@ -98,7 +98,7 @@ pub mod repository;
 
 pub use cursor::ModelCursor;
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
-pub use repository::Repository;
+pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository};
 
 // Re-export mongodb
 pub use mongodb as mongo;
@@ -223,8 +223,9 @@ pub mod prelude {
     pub use crate::ToRepository;
     #[doc(no_inline)]
     pub use crate::{
-        f, field, mongo::Cursor, operator::*, pipeline, sync_indexes, CollectionConfig, Index,
-        IndexOption, Indexes, Model, ModelCursor, Repository, SortOrder,
+        f, field, mongo::Cursor, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
+        BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, ModelCursor,
+        Repository, SortOrder,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};

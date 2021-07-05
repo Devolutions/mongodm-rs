@@ -1,9 +1,36 @@
 //! Repositories are abstraction over a specific mongo collection for a given `Model`
 
 use crate::{CollectionConfig, Model};
-use mongodb::bson::{from_bson, to_bson, Bson, Document};
+use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{doc, from_bson, to_bson, Bson, Document};
 use mongodb::options::*;
 use mongodb::results::*;
+use serde::Deserialize;
+use std::borrow::Borrow;
+
+#[derive(Debug)]
+pub struct BulkUpdate {
+    pub query: Document,
+    pub update: Document,
+    pub options: Option<UpdateOptions>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateResult {
+    #[serde(rename = "n")]
+    pub nb_affected: u64,
+    #[serde(rename = "nModified")]
+    pub nb_modified: u64,
+    #[serde(default)]
+    pub upserted: Vec<BulkUpdateUpsertResult>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateUpsertResult {
+    pub index: u64,
+    #[serde(alias = "_id")]
+    pub id: ObjectId,
+}
 
 /// Associate a `mongodb::Collection` and a specific `Model`.
 ///
@@ -11,6 +38,7 @@ use mongodb::results::*;
 /// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
 #[derive(Debug)]
 pub struct Repository<M: Model> {
+    db: mongodb::Database, // FIXME: temporary keep reference to database object for `bulk_update` operation
     coll: mongodb::Collection,
     _pd: std::marker::PhantomData<M>,
 }
@@ -18,6 +46,7 @@ pub struct Repository<M: Model> {
 impl<M: Model> Clone for Repository<M> {
     fn clone(&self) -> Self {
         Self {
+            db: self.db.clone(),
             coll: self.coll.clone(),
             _pd: std::marker::PhantomData,
         }
@@ -34,6 +63,7 @@ impl<M: Model> Repository<M> {
         };
 
         Self {
+            db,
             coll,
             _pd: std::marker::PhantomData,
         }
@@ -41,8 +71,10 @@ impl<M: Model> Repository<M> {
 
     /// Create a new repository with associated collection options (override `Model::coll_options`).
     pub fn new_with_options(db: mongodb::Database, options: CollectionOptions) -> Self {
+        let coll = db.collection_with_options(M::CollConf::collection_name(), options);
         Self {
-            coll: db.collection_with_options(M::CollConf::collection_name(), options),
+            db,
+            coll,
             _pd: std::marker::PhantomData,
         }
     }
@@ -188,6 +220,7 @@ impl<M: Model> Repository<M> {
         OtherModel: Model<CollConf = M::CollConf>,
     {
         Repository {
+            db: self.db,
             coll: self.coll,
             _pd: std::marker::PhantomData,
         }
@@ -418,6 +451,74 @@ impl<M: Model> Repository<M> {
         options: impl Into<Option<UpdateOptions>>,
     ) -> mongodb::error::Result<UpdateResult> {
         self.coll.update_one(query, update, options).await
+    }
+
+    /// Apply multiple update operations in bulk.
+    ///
+    /// This will be removed once support for bulk update is added to the official driver.
+    /// [see](https://jira.mongodb.org/browse/RUST-531) for tracking progress on this feature in the official driver.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let bulk_update_res = repository
+    ///     .bulk_update(&vec![
+    ///         &BulkUpdate {
+    ///             query: doc! { f!(name in User): "Dane" },
+    ///             update: doc! { Set: { f!(age in User): 12 } },
+    ///             options: None,
+    ///         },
+    ///         &BulkUpdate {
+    ///             query: doc! { f!(name in User): "David" },
+    ///             update: doc! { Set: { f!(age in User): 30 } },
+    ///             options: None,
+    ///         },
+    ///     ])
+    ///     .await
+    ///     .unwrap();
+    /// assert_eq!(bulk_update_res.nb_affected, 2);
+    /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// ```
+    pub async fn bulk_update<V, U>(&self, updates: V) -> mongodb::error::Result<BulkUpdateResult>
+    where
+        V: Borrow<Vec<U>>,
+        U: Borrow<BulkUpdate>,
+    {
+        let updates = updates.borrow();
+        let mut update_docs = Vec::with_capacity(updates.len());
+        for u in updates {
+            let u = u.borrow();
+            let mut doc = doc! {
+                "q": &u.query,
+                "u": &u.update,
+                "multi": false,
+            };
+            if let Some(options) = &u.options {
+                if let Some(ref upsert) = options.upsert {
+                    doc.insert("upsert", upsert);
+                }
+                if let Some(ref collation) = options.collation {
+                    doc.insert("collation", to_bson(collation)?);
+                }
+                if let Some(ref array_filters) = options.array_filters {
+                    doc.insert("arrayFilters", array_filters);
+                }
+                if let Some(ref hint) = options.hint {
+                    doc.insert("hint", to_bson(hint)?);
+                }
+            }
+            update_docs.push(doc);
+        }
+        let mut command = doc! {
+            "update": self.collection_name(),
+            "updates": update_docs,
+        };
+        if let Some(ref write_concern) = self.db.write_concern() {
+            command.insert("writeConcern", to_bson(write_concern)?);
+        }
+        let selection_criteria: Option<SelectionCriteria> = self.db.selection_criteria().cloned();
+        let res = self.db.run_command(command, selection_criteria).await?;
+        Ok(from_bson(Bson::Document(res))?)
     }
 
     fn h_doc_to_model(doc: Document) -> mongodb::error::Result<M> {
