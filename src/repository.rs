@@ -479,12 +479,11 @@ impl<M: Model> Repository<M> {
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
     /// ```
-    pub async fn bulk_update<V, U>(
-        &self,
-        updates: V,
-    ) -> mongodb::error::Result<BulkUpdateResult>
-        where V: Borrow<Vec<U>>,
-              U: Borrow<BulkUpdate> {
+    pub async fn bulk_update<V, U>(&self, updates: V) -> mongodb::error::Result<BulkUpdateResult>
+    where
+        V: Borrow<Vec<U>>,
+        U: Borrow<BulkUpdate>,
+    {
         let updates = updates.borrow();
         let mut update_docs = Vec::with_capacity(updates.len());
         for u in updates.into_iter() {
