@@ -25,3 +25,4 @@ pretty_assertions = "0.6"
 default = ["tokio-runtime"]
 tokio-runtime = ["mongodb/tokio-runtime"]
 async-std-runtime = ["mongodb/async-std-runtime"]
+chrono-0_4 = ["mongodb/bson-chrono-0_4"]
