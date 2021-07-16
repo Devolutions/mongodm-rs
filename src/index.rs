@@ -374,7 +374,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
         }
         Err(e) => {
             match e.kind.as_ref() {
-                mongodb::error::ErrorKind::CommandError(err) if err.code == 26 => {
+                mongodb::error::ErrorKind::Command(err) if err.code == 26 => {
                     // Namespace doesn't exists yet as such no index is present either.
                 }
                 _ => return Err(e),
@@ -405,7 +405,7 @@ async fn h_run_command(
         .await?;
     if let Ok(err) = from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone())) {
         Err(mongodb::error::Error::from(
-            mongodb::error::ErrorKind::CommandError(err),
+            mongodb::error::ErrorKind::Command(err),
         ))
     } else {
         Ok(ret)

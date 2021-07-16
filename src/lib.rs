@@ -91,12 +91,10 @@ extern crate pretty_assertions;
 
 mod macros;
 
-pub mod cursor;
 pub mod index;
 pub mod operator;
 pub mod repository;
 
-pub use cursor::ModelCursor;
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
 pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository};
 
@@ -108,7 +106,7 @@ pub use mongodb::bson;
 pub use mongodb::bson::{bson, doc};
 
 /// Associate a collection configuration
-pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned {
+pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin {
     type CollConf: CollectionConfig;
 }
 
@@ -206,7 +204,7 @@ pub mod prelude {
             ReadPreference as MongoReadPreference,
             ReadPreferenceOptions as MongoReadPreferenceOptions,
             ReplaceOptions as MongoReplaceOptions, ReturnDocument as MongoReturnDocument,
-            SelectionCriteria as MongoSelectionCriteria, StreamAddress as MongoStreamAddress,
+            SelectionCriteria as MongoSelectionCriteria, ServerAddress as MongoServerAddress,
             TagSet as MongoTagSet, Tls as MongoTls, TlsOptions as MongoTlsOptions,
             UpdateModifications as MongoUpdateModifications, UpdateOptions as MongoUpdateOptions,
             ValidationAction as MongoValidationAction, ValidationLevel as MongoValidationLevel,
@@ -224,8 +222,8 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
         f, field, mongo::Cursor, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
-        BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, ModelCursor,
-        Repository, SortOrder,
+        BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, Repository,
+        SortOrder,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};
