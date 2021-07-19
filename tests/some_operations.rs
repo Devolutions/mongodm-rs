@@ -2,14 +2,7 @@
 extern crate pretty_assertions;
 
 use futures_util::StreamExt;
-use mongodb::bson::doc;
-use mongodb::options::ClientOptions;
-use mongodb::Client;
-use mongodm::operator::*;
-use mongodm::repository::BulkUpdate;
-use mongodm::{
-    f, sync_indexes, CollectionConfig, Index, IndexOption, Indexes, Model, ToRepository,
-};
+use mongodm::prelude::*;
 use serde::{Deserialize, Serialize};
 
 struct UserCollConf;
@@ -40,10 +33,10 @@ impl Model for User {
 #[tokio::test]
 #[ignore]
 async fn insert_delete_find() {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+    let client_options = MongoClientOptions::parse("mongodb://localhost:27017")
         .await
         .unwrap();
-    let client = Client::with_options(client_options).unwrap();
+    let client = MongoClient::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
     let repository = db.repository::<User>();
@@ -122,10 +115,10 @@ async fn insert_delete_find() {
 #[tokio::test]
 #[ignore]
 async fn bulk_updates() {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+    let client_options = MongoClientOptions::parse("mongodb://localhost:27017")
         .await
         .unwrap();
-    let client = Client::with_options(client_options).unwrap();
+    let client = MongoClient::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
     let repository = db.repository::<User>();

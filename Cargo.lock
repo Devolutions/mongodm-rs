@@ -274,6 +274,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
+ "serde",
  "time",
  "winapi",
 ]
@@ -958,6 +959,7 @@ dependencies = [
 name = "mongodm"
 version = "0.8.0-beta"
 dependencies = [
+ "chrono",
  "futures-core",
  "futures-util",
  "mongodb",
