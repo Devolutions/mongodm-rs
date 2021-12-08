@@ -46,7 +46,7 @@ async fn one_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.one_sync",
                 "firstBatch" : [
                     {
@@ -141,7 +141,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {
@@ -184,7 +184,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {
@@ -226,7 +226,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {

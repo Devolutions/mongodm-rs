@@ -171,7 +171,10 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::mongo::bson::{
         bson, de::Error as BsonDeError, doc, from_bson, oid::ObjectId, ser::Error as BsonSerError,
-        to_bson, Bson, DateTime as BsonDateTime, Document as BsonDocument,
+        to_bson, Binary as BsonBinary, Bson, DateTime as BsonDateTime,
+        Deserializer as BsonDeserializer, Document as BsonDocument,
+        JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope, Regex as BsonRegex,
+        Serializer as BsonSerializer, Timestamp as BsonTimestamp,
     };
     #[doc(no_inline)]
     pub use crate::mongo::{
