@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pretty_assertions;
 
-use mongodb::bson::doc;
+use mongodb::bson::{doc, Document};
 use mongodb::options::ClientOptions;
 use mongodb::Client;
 use mongodm::{sync_indexes, CollectionConfig, Index, IndexOption, Indexes};
@@ -27,7 +27,7 @@ async fn one_sync() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    db.collection(OneSyncCollConf::collection_name())
+    db.collection::<Document>(OneSyncCollConf::collection_name())
         .drop(None)
         .await
         .unwrap();
@@ -46,7 +46,7 @@ async fn one_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.one_sync",
                 "firstBatch" : [
                     {
@@ -122,7 +122,7 @@ async fn multiple_sync() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    db.collection(MultipleSyncCollConf::collection_name())
+    db.collection::<Document>(MultipleSyncCollConf::collection_name())
         .drop(None)
         .await
         .unwrap();
@@ -141,7 +141,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {
@@ -184,7 +184,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {
@@ -226,7 +226,7 @@ async fn multiple_sync() {
         ret,
         doc! {
             "cursor" : {
-                "id" : 0u64,
+                "id" : 0i64,
                 "ns" : "rust_mongo_orm_tests.multiple_sync",
                 "firstBatch" : [
                     {
