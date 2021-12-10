@@ -9,9 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING:** MongoDB driver and Tokio update
-  tokio 1.x
-  mongodb 2.0
+- **BREAKING:** Update `mongodb` to `2.x`
 
 ## [0.7.0] 2021-05-01
 
