@@ -286,8 +286,7 @@ impl<M: Model> Repository<M> {
         if let Some(ref write_concern) = self.db.write_concern() {
             command.insert("writeConcern", to_bson(write_concern)?);
         }
-        let selection_criteria: Option<SelectionCriteria> = self.db.selection_criteria().cloned();
-        let res = self.db.run_command(command, selection_criteria).await?;
+        let res = self.db.run_command(command, None).await?;
         Ok(from_document(res)?)
     }
 }
