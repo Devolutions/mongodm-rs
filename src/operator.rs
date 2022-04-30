@@ -277,7 +277,7 @@ declare_operator! { "Arithmetic Expression Operators" ["https://docs.mongodb.com
     Round => "$round",
     Sqrt => "$sqrt",
     SquareRoot => "$sqrt",
-    Substract => "$substract",
+    Subtract => "$subtract",
     Trunc => "$trunc",
     Truncate => "$truncate",
 }
