@@ -1,6 +1,7 @@
 //! Repositories are abstraction over a specific mongo collection for a given `Model`
 
 use crate::{CollectionConfig, Model};
+use async_trait::async_trait;
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{doc, from_document, to_bson, Document};
 use mongodb::error::Result;
@@ -251,8 +252,59 @@ impl<M: Model> Repository<M> {
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
-        V: Borrow<Vec<U>>,
-        U: Borrow<BulkUpdate>,
+        M: Send + Sync,
+        V: Borrow<Vec<U>> + Send + Sync,
+        U: Borrow<BulkUpdate> + Send + Sync,
+    {
+        Ok(self.coll.bulk_update(&self.db, updates).await?)
+    }
+}
+
+
+#[async_trait]
+pub trait MongodmCollectionExt {
+    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
+    where
+        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
+        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
+}
+
+use crate::prelude::MongoDatabase;
+
+#[async_trait]
+impl<M: Send + Sync> MongodmCollectionExt for mongodb::Collection<M> {
+    /// Apply multiple update operations in bulk.
+    ///
+    /// This will be removed once support for bulk update is added to the official driver.
+    /// [see](https://jira.mongodb.org/browse/RUST-531) for tracking progress on this feature in the official driver.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use mongodm::prelude::*;
+    /// /* ... */
+    /// let bulk_update_res = collection
+    ///     .bulk_update(&vec![
+    ///         &BulkUpdate {
+    ///             query: doc! { f!(name in User): "Dane" },
+    ///             update: doc! { Set: { f!(age in User): 12 } },
+    ///             options: None,
+    ///         },
+    ///         &BulkUpdate {
+    ///             query: doc! { f!(name in User): "David" },
+    ///             update: doc! { Set: { f!(age in User): 30 } },
+    ///             options: None,
+    ///         },
+    ///     ])
+    ///     .await
+    ///     .unwrap();
+    /// assert_eq!(bulk_update_res.nb_affected, 2);
+    /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// ```
+    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
+    where
+        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
+        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>,
     {
         let updates = updates.borrow();
         let mut update_docs = Vec::with_capacity(updates.len());
@@ -280,13 +332,13 @@ impl<M: Model> Repository<M> {
             update_docs.push(doc);
         }
         let mut command = doc! {
-            "update": self.collection_name(),
+            "update": self.name(),
             "updates": update_docs,
         };
-        if let Some(ref write_concern) = self.db.write_concern() {
+        if let Some(ref write_concern) = self.write_concern() {
             command.insert("writeConcern", to_bson(write_concern)?);
         }
-        let res = self.db.run_command(command, None).await?;
+        let res = db.run_command(command, None).await?;
         Ok(from_document(res)?)
     }
 }
