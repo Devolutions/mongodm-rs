@@ -231,7 +231,27 @@ impl<M: Model> Repository<M> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # use serde::{Serialize, Deserialize};
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct User {
+    /// #     name: String,
+    /// #     age: i64,
+    /// # }
+    /// # impl Model for User {
+    /// #     type CollConf = UserCollConf;
+    /// # }
+    /// # struct UserCollConf;
+    /// # impl CollectionConfig for UserCollConf {
+    /// #     fn collection_name() -> &'static str { "user" }
+    /// # }
+    /// use mongodm::prelude::*;
+    /// /* ... */
+    /// # async fn demo(_db: mongodb::Database) {
+    /// let db: mongodb::Database; /* exists */
+    /// # db = _db;
+    /// let repository = db.repository::<User>();
+    /// /* ... */
     /// let bulk_update_res = repository
     ///     .bulk_update(&vec![
     ///         &BulkUpdate {
@@ -249,6 +269,7 @@ impl<M: Model> Repository<M> {
     ///     .unwrap();
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// # }
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
@@ -261,18 +282,9 @@ impl<M: Model> Repository<M> {
 }
 
 
+/// MongODM-provided utilities functions on `mongodb::Collection<M>`.
 #[async_trait]
-pub trait MongodmCollectionExt {
-    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
-    where
-        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
-        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
-}
-
-use crate::prelude::MongoDatabase;
-
-#[async_trait]
-impl<M: Send + Sync> MongodmCollectionExt for mongodb::Collection<M> {
+pub trait CollectionExt {
     /// Apply multiple update operations in bulk.
     ///
     /// This will be removed once support for bulk update is added to the official driver.
@@ -280,11 +292,22 @@ impl<M: Send + Sync> MongodmCollectionExt for mongodb::Collection<M> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # use serde::{Serialize, Deserialize};
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct User {
+    /// #     name: String,
+    /// #     age: i64,
+    /// # }
     /// use mongodm::prelude::*;
     /// /* ... */
+    /// # async fn demo(_db: mongodb::Database) {
+    /// let db: mongodb::Database; /* exists */
+    /// # db = _db;
+    /// let collection = db.collection::<User>("user");
+    /// /* ... */
     /// let bulk_update_res = collection
-    ///     .bulk_update(&vec![
+    ///     .bulk_update(&db, &vec![
     ///         &BulkUpdate {
     ///             query: doc! { f!(name in User): "Dane" },
     ///             update: doc! { Set: { f!(age in User): 12 } },
@@ -300,8 +323,17 @@ impl<M: Send + Sync> MongodmCollectionExt for mongodb::Collection<M> {
     ///     .unwrap();
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// # }
     /// ```
-    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
+    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
+    where
+        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
+        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
+}
+
+#[async_trait]
+impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
+    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
         U: 'async_trait + Send + Sync + Borrow<BulkUpdate>,
