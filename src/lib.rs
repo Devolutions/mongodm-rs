@@ -225,7 +225,7 @@ pub mod prelude {
         f, field, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
         BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, Repository,
         SortOrder,
-        repository::CollectionExt, ToRepository,
+        repository::CollectionExt as _, ToRepository as _,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};
