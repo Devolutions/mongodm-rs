@@ -10,7 +10,7 @@ use serde::Deserialize;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
-/// Represent an individual update operation for the `bulk_update` function.
+/// Represents an individual update operation for the `bulk_update` function.
 #[derive(Debug)]
 pub struct BulkUpdate {
     pub query: Document,
