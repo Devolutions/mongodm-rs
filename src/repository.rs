@@ -249,7 +249,7 @@ impl<M: Model> Repository<M> {
     /// /* ... */
     /// # async fn demo() {
     /// let db: mongodb::Database; /* exists */
-    /// # let client = MongoClient::with_uri_str("uri").await.unwrap();
+    /// # let client = MongoClient::with_uri_str("test").await.unwrap();
     /// # db = client.database("test");
     /// let repository = db.repository::<User>();
     /// /* ... */
@@ -285,16 +285,9 @@ impl<M: Model> Repository<M> {
 }
 
 
+/// MongODM-provided utilities functions on `mongodb::Collection<M>`.
 #[async_trait]
 pub trait CollectionExt {
-    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
-    where
-        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
-        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
-}
-
-#[async_trait]
-impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// Apply multiple update operations in bulk.
     ///
     /// This will be removed once support for bulk update is added to the official driver.
@@ -313,7 +306,7 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// /* ... */
     /// # async fn demo() {
     /// let db: mongodb::Database; /* exists */
-    /// # let client = MongoClient::with_uri_str("uri").await.unwrap();
+    /// # let client = MongoClient::with_uri_str("test").await.unwrap();
     /// # db = client.database("test");
     /// let collection = db.collection::<User>("user");
     /// /* ... */
@@ -338,6 +331,14 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
     /// # rt.block_on(demo());
     /// ```
+    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
+    where
+        V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
+        U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
+}
+
+#[async_trait]
+impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
