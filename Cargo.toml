@@ -1,6 +1,6 @@
 [package]
 name = "mongodm"
-version = "0.8.2"
+version = "0.9.0"
 authors = ["Benoît CORTIER <benoit.cortier@fried-world.eu>"]
 edition = "2018"
 description = "A thin ODM layer for mongodb"

@@ -90,10 +90,10 @@
 extern crate pretty_assertions;
 
 mod macros;
+mod index;
+mod repository;
 
-pub mod index;
 pub mod operator;
-pub mod repository;
 
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
 pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository, CollectionExt};
@@ -105,7 +105,7 @@ pub use mongodb::bson;
 // Re-export bson macros
 pub use mongodb::bson::{bson, doc};
 
-/// Associate a collection configuration
+/// Associate a collection configuration.
 pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin {
     type CollConf: CollectionConfig;
 }
@@ -225,7 +225,7 @@ pub mod prelude {
         f, field, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
         BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, Repository,
         SortOrder,
-        repository::CollectionExt as _, ToRepository as _,
+        CollectionExt as _, ToRepository as _,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};

@@ -10,6 +10,7 @@ use serde::Deserialize;
 use std::borrow::Borrow;
 use std::ops::Deref;
 
+/// Represents an individual update operation for the `bulk_update` function.
 #[derive(Debug)]
 pub struct BulkUpdate {
     pub query: Document,
@@ -17,6 +18,7 @@ pub struct BulkUpdate {
     pub options: Option<UpdateOptions>,
 }
 
+/// Result of a `bulk_update` operation.
 #[derive(Debug, Deserialize)]
 pub struct BulkUpdateResult {
     #[serde(rename = "n")]
@@ -27,6 +29,8 @@ pub struct BulkUpdateResult {
     pub upserted: Vec<BulkUpdateUpsertResult>,
 }
 
+/// Individual update result of a `bulk_update` operation.
+/// Contains the generated id in case of an upsert.
 #[derive(Debug, Deserialize)]
 pub struct BulkUpdateUpsertResult {
     pub index: u64,
