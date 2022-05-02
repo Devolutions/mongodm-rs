@@ -96,7 +96,7 @@ pub mod operator;
 pub mod repository;
 
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
-pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository};
+pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository, CollectionExt};
 
 // Re-export mongodb
 pub use mongodb as mongo;
@@ -221,12 +221,11 @@ pub mod prelude {
         Database as MongoDatabase,
     };
     #[doc(no_inline)]
-    pub use crate::ToRepository;
-    #[doc(no_inline)]
     pub use crate::{
-        f, field, mongo::Cursor, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
+        f, field, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
         BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, Repository,
         SortOrder,
+        repository::CollectionExt as _, ToRepository as _,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};
