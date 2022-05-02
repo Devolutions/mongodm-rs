@@ -232,9 +232,26 @@ impl<M: Model> Repository<M> {
     /// # Example
     ///
     /// ```no_run
+    /// # use serde::{Serialize, Deserialize};
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct User {
+    /// #     name: String,
+    /// #     age: i64,
+    /// # }
+    /// # impl Model for User {
+    /// #     type CollConf = UserCollConf;
+    /// # }
+    /// # struct UserCollConf;
+    /// # impl CollectionConfig for UserCollConf {
+    /// #     fn collection_name() -> &'static str { "user" }
+    /// # }
     /// use mongodm::prelude::*;
     /// /* ... */
-    /// let repository: Repository<M> = <...>;
+    /// # async fn demo() {
+    /// let db: mongodb::Database; /* exists */
+    /// # let client = MongoClient::with_uri_str("uri").await.unwrap();
+    /// # db = client.database("test");
+    /// let repository = db.repository::<User>();
     /// /* ... */
     /// let bulk_update_res = repository
     ///     .bulk_update(&vec![
@@ -253,6 +270,9 @@ impl<M: Model> Repository<M> {
     ///     .unwrap();
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// # }
+    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
+    /// # rt.block_on(demo());
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
@@ -283,10 +303,19 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// # Example
     ///
     /// ```no_run
+    /// # use serde::{Serialize, Deserialize};
+    /// # #[derive(Serialize, Deserialize)]
+    /// # struct User {
+    /// #     name: String,
+    /// #     age: i64,
+    /// # }
     /// use mongodm::prelude::*;
     /// /* ... */
-    /// let db: mongodb::Database = <...>;
-    /// let collection: mongodb::Collection<M> = <...>;
+    /// # async fn demo() {
+    /// let db: mongodb::Database; /* exists */
+    /// # let client = MongoClient::with_uri_str("uri").await.unwrap();
+    /// # db = client.database("test");
+    /// let collection = db.collection::<User>("user");
     /// /* ... */
     /// let bulk_update_res = collection
     ///     .bulk_update(&db, &vec![
@@ -305,6 +334,9 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     ///     .unwrap();
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
+    /// # }
+    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
+    /// # rt.block_on(demo());
     /// ```
     async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
