@@ -96,7 +96,7 @@ pub mod operator;
 pub mod repository;
 
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
-pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository};
+pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository, CollectionExt};
 
 // Re-export mongodb
 pub use mongodb as mongo;
