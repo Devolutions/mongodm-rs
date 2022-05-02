@@ -262,7 +262,7 @@ impl<M: Model> Repository<M> {
 
 
 #[async_trait]
-pub trait MongodmCollectionExt {
+pub trait CollectionExt {
     async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
@@ -272,7 +272,7 @@ pub trait MongodmCollectionExt {
 use crate::prelude::MongoDatabase;
 
 #[async_trait]
-impl<M: Send + Sync> MongodmCollectionExt for mongodb::Collection<M> {
+impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// Apply multiple update operations in bulk.
     ///
     /// This will be removed once support for bulk update is added to the official driver.
