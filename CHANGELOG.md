@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Expose `bulk_update` function to the native `mongodb::Collection` via an Extension Trait `CollectionExt`
 
-## [0.8.1] 2022-04-30
-
-### Changed
+### Fixed
 
 - Fixed a typo in the `$subtract` operator
+
+## [0.8.1] 2022-03-31
+
+### Fixed
+
+- Fixed an issue with selection_criteria on the `Repository::bulk_update` function
 
 ## [0.8.0] 2021-12-09
 
