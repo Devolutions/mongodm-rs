@@ -30,7 +30,7 @@ pub struct BulkUpdateResult {
 }
 
 /// Individual update result of a `bulk_update` operation.
-/// Contain the generated id in case of an upsert.
+/// Contains the generated id in case of an upsert.
 #[derive(Debug, Deserialize)]
 pub struct BulkUpdateUpsertResult {
     pub index: u64,
