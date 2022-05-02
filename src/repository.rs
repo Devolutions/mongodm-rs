@@ -231,7 +231,11 @@ impl<M: Model> Repository<M> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use mongodm::prelude::*;
+    /// /* ... */
+    /// let repository: Repository<M> = <...>;
+    /// /* ... */
     /// let bulk_update_res = repository
     ///     .bulk_update(&vec![
     ///         &BulkUpdate {
@@ -263,13 +267,11 @@ impl<M: Model> Repository<M> {
 
 #[async_trait]
 pub trait CollectionExt {
-    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
+    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
         U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
 }
-
-use crate::prelude::MongoDatabase;
 
 #[async_trait]
 impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
@@ -280,11 +282,14 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
     /// use mongodm::prelude::*;
     /// /* ... */
+    /// let db: mongodb::Database = <...>;
+    /// let collection: mongodb::Collection<M> = <...>;
+    /// /* ... */
     /// let bulk_update_res = collection
-    ///     .bulk_update(&vec![
+    ///     .bulk_update(&db, &vec![
     ///         &BulkUpdate {
     ///             query: doc! { f!(name in User): "Dane" },
     ///             update: doc! { Set: { f!(age in User): 12 } },
@@ -301,7 +306,7 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
     /// ```
-    async fn bulk_update<V, U>(&self, db: &MongoDatabase, updates: V) -> Result<BulkUpdateResult>
+    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
         U: 'async_trait + Send + Sync + Borrow<BulkUpdate>,
