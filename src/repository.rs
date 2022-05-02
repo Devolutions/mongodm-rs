@@ -247,10 +247,9 @@ impl<M: Model> Repository<M> {
     /// # }
     /// use mongodm::prelude::*;
     /// /* ... */
-    /// # async fn demo() {
+    /// # async fn demo(_db: mongodb::Database) {
     /// let db: mongodb::Database; /* exists */
-    /// # let client = MongoClient::with_uri_str("test").await.unwrap();
-    /// # db = client.database("test");
+    /// # db = _db;
     /// let repository = db.repository::<User>();
     /// /* ... */
     /// let bulk_update_res = repository
@@ -271,8 +270,6 @@ impl<M: Model> Repository<M> {
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
     /// # }
-    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
-    /// # rt.block_on(demo());
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
@@ -304,10 +301,9 @@ pub trait CollectionExt {
     /// # }
     /// use mongodm::prelude::*;
     /// /* ... */
-    /// # async fn demo() {
+    /// # async fn demo(_db: mongodb::Database) {
     /// let db: mongodb::Database; /* exists */
-    /// # let client = MongoClient::with_uri_str("test").await.unwrap();
-    /// # db = client.database("test");
+    /// # db = _db;
     /// let collection = db.collection::<User>("user");
     /// /* ... */
     /// let bulk_update_res = collection
@@ -328,8 +324,6 @@ pub trait CollectionExt {
     /// assert_eq!(bulk_update_res.nb_affected, 2);
     /// assert_eq!(bulk_update_res.nb_modified, 2);
     /// # }
-    /// # let mut rt = tokio::runtime::Runtime::new().unwrap();
-    /// # rt.block_on(demo());
     /// ```
     async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
     where
