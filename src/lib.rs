@@ -89,14 +89,16 @@
 #[cfg(test)]
 extern crate pretty_assertions;
 
-mod macros;
 mod index;
+mod macros;
 mod repository;
 
 pub mod operator;
 
 pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
-pub use repository::{BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, Repository, CollectionExt};
+pub use repository::{
+    BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, CollectionExt, Repository,
+};
 
 // Re-export mongodb
 pub use mongodb as mongo;
@@ -223,9 +225,8 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
         f, field, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
-        BulkUpdateUpsertResult, CollectionConfig, Index, IndexOption, Indexes, Model, Repository,
-        SortOrder,
-        CollectionExt as _, ToRepository as _,
+        BulkUpdateUpsertResult, CollectionConfig, CollectionExt as _, Index, IndexOption, Indexes,
+        Model, Repository, SortOrder, ToRepository as _,
     };
     #[doc(no_inline)]
     pub use futures_util::future::{BoxFuture, FutureExt};

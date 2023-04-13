@@ -26,10 +26,48 @@ impl From<SortOrder> for Bson {
     }
 }
 
+#[derive(Clone, Debug)]
+enum IndexKey {
+    SortIndex(SortIndexKey),
+    TextIndex(TextIndexKey),
+}
+
+impl IndexKey {
+    fn get_key_name(&self) -> String {
+        match self {
+            IndexKey::SortIndex(s) => match s.direction {
+                SortOrder::Ascending => format!("{}_1", s.name),
+                SortOrder::Descending => format!("{}_-1", s.name),
+            },
+
+            IndexKey::TextIndex(t) => format!("{}_text", t.name),
+        }
+    }
+
+    fn get_name(&self) -> String {
+        match self {
+            IndexKey::SortIndex(s) => s.name.to_string(),
+            IndexKey::TextIndex(t) => t.name.to_string(),
+        }
+    }
+
+    fn get_value(&self) -> Bson {
+        match self {
+            IndexKey::SortIndex(s) => s.direction.into(),
+            IndexKey::TextIndex(_) => "text".into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-struct IndexKey {
+struct SortIndexKey {
     name: Cow<'static, str>,
     direction: SortOrder,
+}
+
+#[derive(Debug, Clone)]
+struct TextIndexKey {
+    name: Cow<'static, str>,
 }
 
 /// Specify field to be used for indexing and options.
@@ -78,6 +116,15 @@ impl Index {
         index
     }
 
+    /// Make a new index for the given key with the text parameter.
+    ///
+    /// [Mongo manual](https://docs.mongodb.com/manual/core/index-single/)
+    pub fn new_with_text(key: impl Into<Cow<'static, str>>) -> Self {
+        let mut index = Self::default();
+        index.add_key_with_text(key);
+        index
+    }
+
     /// Make this index compound adding the given key with ascending direction.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
@@ -99,10 +146,18 @@ impl Index {
         key: impl Into<Cow<'static, str>>,
         direction: SortOrder,
     ) {
-        self.keys.push(IndexKey {
+        self.keys.push(IndexKey::SortIndex(SortIndexKey {
             name: key.into(),
             direction,
-        });
+        }));
+    }
+
+    /// Make this index compound adding the given key with text.
+    ///
+    /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
+    pub fn add_key_with_text(&mut self, key: impl Into<Cow<'static, str>>) {
+        self.keys
+            .push(IndexKey::TextIndex(TextIndexKey { name: key.into() }));
     }
 
     /// Builder style method for `add_key_with_direction`.
@@ -140,13 +195,8 @@ impl Index {
         let mut names = Vec::with_capacity(self.keys.len());
         let mut keys_doc = Document::new();
         for key in self.keys {
-            let key_name = match key.direction {
-                SortOrder::Ascending => format!("{}_1", key.name),
-                SortOrder::Descending => format!("{}_-1", key.name),
-            };
-            names.push(key_name);
-
-            keys_doc.insert(key.name, key.direction);
+            names.push(key.get_key_name());
+            keys_doc.insert(key.get_name(), key.get_value());
         }
 
         let mut index_doc = doc! { "key": keys_doc };
@@ -232,6 +282,8 @@ pub enum IndexOption {
     StorageEngine(Document),
     /// Specifies the collation
     Collation(Document),
+    /// Specifies the weights for text indexes
+    Weights(Vec<(String, i32)>),
     /// Specify a custom index option. This is present to provide forwards compatibility.
     Custom { name: String, value: Bson },
 }
@@ -247,6 +299,7 @@ impl IndexOption {
             IndexOption::ExpireAfterSeconds(..) => "expireAfterSeconds",
             IndexOption::StorageEngine(..) => "storageEngine",
             IndexOption::Collation(..) => "collation",
+            IndexOption::Weights(..) => "weights",
             IndexOption::Custom { name, .. } => name.as_str(),
         }
     }
@@ -261,6 +314,13 @@ impl IndexOption {
             IndexOption::PartialFilterExpression(doc)
             | IndexOption::StorageEngine(doc)
             | IndexOption::Collation(doc) => Bson::Document(doc),
+            IndexOption::Weights(w) => {
+                let mut doc = Document::new();
+                w.into_iter().for_each(|(k, v)| {
+                    doc.insert(k, Bson::from(v));
+                });
+                Bson::Document(doc)
+            }
             IndexOption::Custom { value, .. } => value,
         }
     }
