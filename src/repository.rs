@@ -285,7 +285,6 @@ impl<M: Model> Repository<M> {
     }
 }
 
-
 /// MongODM-provided utilities functions on `mongodb::Collection<M>`.
 #[async_trait]
 pub trait CollectionExt {
@@ -329,7 +328,11 @@ pub trait CollectionExt {
     /// assert_eq!(bulk_update_res.nb_modified, 2);
     /// # }
     /// ```
-    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
+    async fn bulk_update<V, U>(
+        &self,
+        db: &mongodb::Database,
+        updates: V,
+    ) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
         U: 'async_trait + Send + Sync + Borrow<BulkUpdate>;
@@ -337,7 +340,11 @@ pub trait CollectionExt {
 
 #[async_trait]
 impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
-    async fn bulk_update<V, U>(&self, db: &mongodb::Database, updates: V) -> Result<BulkUpdateResult>
+    async fn bulk_update<V, U>(
+        &self,
+        db: &mongodb::Database,
+        updates: V,
+    ) -> Result<BulkUpdateResult>
     where
         V: 'async_trait + Send + Sync + Borrow<Vec<U>>,
         U: 'async_trait + Send + Sync + Borrow<BulkUpdate>,
