@@ -152,7 +152,7 @@ impl Index {
         }));
     }
 
-    /// Make this index compound adding the given key with a direction.
+    /// Make this index compound adding the given key with text.
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
     pub fn add_key_with_text(&mut self, key: impl Into<Cow<'static, str>>) {
@@ -282,7 +282,7 @@ pub enum IndexOption {
     StorageEngine(Document),
     /// Specifies the collation
     Collation(Document),
-    /// Specifies the collation
+    /// Specifies the weights for text indexes
     Weights(Vec<(String, i32)>),
     /// Specify a custom index option. This is present to provide forwards compatibility.
     Custom { name: String, value: Bson },
