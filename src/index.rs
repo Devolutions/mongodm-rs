@@ -33,7 +33,7 @@ enum IndexKey {
 }
 
 impl IndexKey {
-    pub fn get_key_name(&self) -> String {
+    fn get_key_name(&self) -> String {
         match self {
             IndexKey::SortIndex(s) => match s.direction {
                 SortOrder::Ascending => format!("{}_1", s.name),
@@ -44,14 +44,14 @@ impl IndexKey {
         }
     }
 
-    pub fn get_name(&self) -> String {
+    fn get_name(&self) -> String {
         match self {
             IndexKey::SortIndex(s) => s.name.to_string(),
             IndexKey::TextIndex(t) => t.name.to_string(),
         }
     }
 
-    pub fn get_value(&self) -> Bson {
+    fn get_value(&self) -> Bson {
         match self {
             IndexKey::SortIndex(s) => s.direction.into(),
             IndexKey::TextIndex(_) => "text".into(),
