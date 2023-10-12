@@ -372,7 +372,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                 let index_doc = if index.keys.iter().any(|ind| matches!(ind, IndexKey::TextIndex(_))) {
                     let mut doc = index.into_document();
 
-                    // There an only be 1 text index per collection so when a text index is saved, the keys are automatically changed to this. We keep a copy for the weight comparison.
+                    // There can only be 1 text index per collection so when a text index is saved, the keys are automatically changed to this. We keep a copy for the weight comparison.
                     text_index_keys = doc.get("key").cloned();
                     doc.insert("key", doc! { "_fts": "text", "_ftsx": 1 });
                     doc
@@ -401,21 +401,21 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                                 }
                             }
 
-                            if !existing_weights.eq(&keys_to_set) {
+                            if existing_weights.eq(&keys_to_set) {
+                                already_sync.push(i);
+                            } else {
                                 to_drop.push(
                                     index_doc
                                         .get_str("name")
                                         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
                                         .to_owned(),
                                 );
-                            } else {
-                                already_sync.push(i);
                             }
                             continue;
                         }
                     }
 
-                    if doc_are_eq(dbg!(&index_doc), dbg!(&existing_index)) {
+                    if doc_are_eq(&index_doc, &existing_index) {
                         already_sync.push(i);
                     } else {
                         // An index with the same specification already exists, we need to drop it.
