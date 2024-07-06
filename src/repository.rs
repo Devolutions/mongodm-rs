@@ -66,29 +66,7 @@ impl<M: Model + std::marker::Send + std::marker::Sync + std::marker::Sync + std:
     }
 }
 
-impl<
-        M: Model
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Send
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync
-            + std::marker::Sync,
-    > Repository<M>
-{
+impl<M: Model + Send + Sync> Repository<M> {
     /// Create a new repository from the given mongo client.
     pub fn new(db: mongodb::Database) -> Self {
         let coll = if let Some(options) = M::CollConf::collection_options() {
