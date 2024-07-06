@@ -40,7 +40,7 @@ async fn insert_delete_find() {
     let db = client.database("rust_mongo_orm_tests");
 
     let repository = db.repository::<User>();
-    repository.drop(None).await.unwrap();
+    repository.drop().await.unwrap();
     sync_indexes::<UserCollConf>(&db).await.unwrap();
 
     let users = vec![
@@ -81,10 +81,10 @@ async fn insert_delete_find() {
         },
     ];
 
-    repository.insert_many(users, None).await.unwrap();
+    repository.insert_many(users).await.unwrap();
 
     let user_dane = repository
-        .find_one(doc! { f!(name in User): "Dane" }, None)
+        .find_one(doc! { f!(name in User): "Dane" })
         .await
         .unwrap()
         .unwrap();
@@ -93,19 +93,19 @@ async fn insert_delete_find() {
     assert_eq!(user_dane.info, "d");
 
     let found = repository
-        .find(doc! { f!(age in User): { LesserThan: 40 } }, None)
+        .find(doc! { f!(age in User): { LesserThan: 40 } })
         .await
         .unwrap();
     let found: Vec<mongodb::error::Result<User>> = found.collect().await;
     assert_eq!(found.len(), 4);
 
     repository
-        .delete_one(doc! { f!(age in User): { LesserThan: 38 } }, None)
+        .delete_one(doc! { f!(age in User): { LesserThan: 38 } })
         .await
         .unwrap();
 
     let found = repository
-        .find(doc! { f!(age in User): { LesserThan: 40 } }, None)
+        .find(doc! { f!(age in User): { LesserThan: 40 } })
         .await
         .unwrap();
     let found: Vec<mongodb::error::Result<User>> = found.collect().await;
@@ -122,7 +122,7 @@ async fn bulk_updates() {
     let db = client.database("rust_mongo_orm_tests");
 
     let repository = db.repository::<User>();
-    repository.drop(None).await.unwrap();
+    repository.drop().await.unwrap();
     sync_indexes::<UserCollConf>(&db).await.unwrap();
 
     let users = vec![
@@ -163,7 +163,7 @@ async fn bulk_updates() {
         },
     ];
 
-    repository.insert_many(users, None).await.unwrap();
+    repository.insert_many(users).await.unwrap();
 
     let bulk_update_res = repository
         .bulk_update(&vec![
@@ -184,7 +184,7 @@ async fn bulk_updates() {
     assert_eq!(bulk_update_res.nb_modified, 2);
 
     let user_dane = repository
-        .find_one(doc! { f!(name in User): "Dane" }, None)
+        .find_one(doc! { f!(name in User): "Dane" })
         .await
         .unwrap()
         .unwrap();
@@ -192,7 +192,7 @@ async fn bulk_updates() {
     assert_eq!(user_dane.age, 12);
 
     let user_dane = repository
-        .find_one(doc! { f!(name in User): "David" }, None)
+        .find_one(doc! { f!(name in User): "David" })
         .await
         .unwrap()
         .unwrap();

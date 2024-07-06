@@ -2,7 +2,6 @@
 
 use crate::CollectionConfig;
 use mongodb::bson::{doc, from_bson, Bson, Document};
-use mongodb::options::*;
 use mongodb::Database;
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -369,7 +368,11 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
             let mut to_drop = Vec::new();
             for (i, index) in indexes.0.clone().into_iter().enumerate() {
                 let mut text_index_keys = None;
-                let index_doc = if index.keys.iter().any(|ind| matches!(ind, IndexKey::TextIndex(_))) {
+                let index_doc = if index
+                    .keys
+                    .iter()
+                    .any(|ind| matches!(ind, IndexKey::TextIndex(_)))
+                {
                     let mut doc = index.into_document();
 
                     // There can only be 1 text index per collection so when a text index is saved, the keys are automatically changed to this. We keep a copy for the weight comparison.
@@ -390,14 +393,16 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
 
                     // We compare the text index here, the keys become weights of 1 after saving in the DB. Custom weights not supported yet.
                     if let Some(Bson::Document(mut keys_to_set)) = text_index_keys {
-                        if let Some(Bson::Document(existing_weights)) = existing_index.get("weights") {
+                        if let Some(Bson::Document(existing_weights)) =
+                            existing_index.get("weights")
+                        {
                             // Changing all text values to the default weight of 1
                             for keys in keys_to_set.iter_mut() {
                                 match keys.1 {
                                     Bson::String(t) if t == "text" => {
                                         *keys.1 = Bson::Int32(1);
-                                    },
-                                    _ => ()
+                                    }
+                                    _ => (),
                                 }
                             }
 
@@ -407,7 +412,9 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                                 to_drop.push(
                                     index_doc
                                         .get_str("name")
-                                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                                        .map_err(|e| {
+                                            std::io::Error::new(std::io::ErrorKind::Other, e)
+                                        })?
                                         .to_owned(),
                                 );
                             }
@@ -498,7 +505,7 @@ async fn h_run_command(
     let ret = db
         .run_command(
             command_doc,
-            Some(SelectionCriteria::ReadPreference(ReadPreference::Primary)),
+            //Some(SelectionCriteria::ReadPreference(ReadPreference::Primary)),
         )
         .await?;
     if let Ok(err) = from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone())) {

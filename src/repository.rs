@@ -43,19 +43,21 @@ pub struct BulkUpdateUpsertResult {
 /// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
 /// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
 #[derive(Debug)]
-pub struct Repository<M: Model> {
+pub struct Repository<M: Model + Send + Sync> {
     db: mongodb::Database, // FIXME: temporary keep reference to database object for `bulk_update` operation
     coll: mongodb::Collection<M>,
 }
 
-impl<M: Model> Deref for Repository<M> {
+impl<M: Model + std::marker::Send + std::marker::Sync> Deref for Repository<M> {
     type Target = mongodb::Collection<M>;
     fn deref(&self) -> &mongodb::Collection<M> {
         &self.coll
     }
 }
 
-impl<M: Model> Clone for Repository<M> {
+impl<M: Model + std::marker::Send + std::marker::Sync + std::marker::Sync + std::marker::Sync> Clone
+    for Repository<M>
+{
     fn clone(&self) -> Self {
         Self {
             db: self.db.clone(),
@@ -64,7 +66,29 @@ impl<M: Model> Clone for Repository<M> {
     }
 }
 
-impl<M: Model> Repository<M> {
+impl<
+        M: Model
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Send
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync
+            + std::marker::Sync,
+    > Repository<M>
+{
     /// Create a new repository from the given mongo client.
     pub fn new(db: mongodb::Database) -> Self {
         let coll = if let Some(options) = M::CollConf::collection_options() {
@@ -220,7 +244,10 @@ impl<M: Model> Repository<M> {
     /// ```
     pub fn cast_model<OtherModel>(self) -> Repository<OtherModel>
     where
-        OtherModel: Model<CollConf = M::CollConf>,
+        OtherModel: Model<CollConf = M::CollConf>
+            + std::marker::Send
+            + std::marker::Sync
+            + std::marker::Sync,
     {
         Repository {
             db: self.db,
@@ -381,7 +408,7 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
         if let Some(ref write_concern) = self.write_concern() {
             command.insert("writeConcern", to_bson(write_concern)?);
         }
-        let res = db.run_command(command, None).await?;
+        let res = db.run_command(command).await?;
         Ok(from_document(res)?)
     }
 }
