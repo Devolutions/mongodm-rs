@@ -2,6 +2,8 @@
 
 use crate::CollectionConfig;
 use mongodb::bson::{doc, from_bson, Bson, Document};
+use mongodb::options::ReadPreference;
+use mongodb::options::{RunCommandOptions, SelectionCriteria};
 use mongodb::Database;
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -502,11 +504,13 @@ async fn h_run_command(
     db: &Database,
     command_doc: Document,
 ) -> Result<Document, mongodb::error::Error> {
+    let primary_options = RunCommandOptions::builder()
+        .selection_criteria(SelectionCriteria::ReadPreference(ReadPreference::Primary))
+        .build();
+
     let ret = db
-        .run_command(
-            command_doc,
-            //Some(SelectionCriteria::ReadPreference(ReadPreference::Primary)),
-        )
+        .run_command(command_doc)
+        .with_options(primary_options)
         .await?;
     if let Ok(err) = from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone())) {
         Err(mongodb::error::Error::from(
