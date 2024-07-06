@@ -128,8 +128,8 @@ pub trait CollectionConfig {
     /// Configure how indexes should be created and synchronized for the associated collection.
     ///
     /// This method has a default implementation returning no index (only special `_id` index will be present).
-    fn indexes() -> index::Indexes {
-        index::Indexes::default()
+    fn indexes() -> Indexes {
+        Indexes::default()
     }
 }
 

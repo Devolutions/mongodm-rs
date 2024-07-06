@@ -48,14 +48,14 @@ pub struct Repository<M: Model + Send + Sync> {
     coll: mongodb::Collection<M>,
 }
 
-impl<M: Model + std::marker::Send + std::marker::Sync> Deref for Repository<M> {
+impl<M: Model + Send + Sync> Deref for Repository<M> {
     type Target = mongodb::Collection<M>;
     fn deref(&self) -> &mongodb::Collection<M> {
         &self.coll
     }
 }
 
-impl<M: Model + std::marker::Send + std::marker::Sync + std::marker::Sync + std::marker::Sync> Clone
+impl<M: Model + Send + Sync> Clone
     for Repository<M>
 {
     fn clone(&self) -> Self {
@@ -223,9 +223,8 @@ impl<M: Model + Send + Sync> Repository<M> {
     pub fn cast_model<OtherModel>(self) -> Repository<OtherModel>
     where
         OtherModel: Model<CollConf = M::CollConf>
-            + std::marker::Send
-            + std::marker::Sync
-            + std::marker::Sync,
+            + Send
+            + Sync
     {
         Repository {
             db: self.db,
