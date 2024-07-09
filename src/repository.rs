@@ -277,7 +277,6 @@ impl<M: Model> Repository<M> {
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
-        M: Send + Sync,
         V: Borrow<Vec<U>> + Send + Sync,
         U: Borrow<BulkUpdate> + Send + Sync,
     {
@@ -381,7 +380,7 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
         if let Some(ref write_concern) = self.write_concern() {
             command.insert("writeConcern", to_bson(write_concern)?);
         }
-        let res = db.run_command(command, None).await?;
+        let res = db.run_command(command).await?;
         Ok(from_document(res)?)
     }
 }

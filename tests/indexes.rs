@@ -28,17 +28,14 @@ async fn one_sync() {
     let db = client.database("rust_mongo_orm_tests");
 
     db.collection::<Document>(OneSyncCollConf::collection_name())
-        .drop(None)
+        .drop()
         .await
         .unwrap();
 
     sync_indexes::<OneSyncCollConf>(&db).await.unwrap();
 
     let ret = db
-        .run_command(
-            doc! { "listIndexes": OneSyncCollConf::collection_name() },
-            None,
-        )
+        .run_command(doc! { "listIndexes": OneSyncCollConf::collection_name() })
         .await
         .unwrap();
 
@@ -123,17 +120,14 @@ async fn multiple_sync() {
     let db = client.database("rust_mongo_orm_tests");
 
     db.collection::<Document>(MultipleSyncCollConf::collection_name())
-        .drop(None)
+        .drop()
         .await
         .unwrap();
 
     sync_indexes::<MultipleSyncCollConf>(&db).await.unwrap();
 
     let ret = db
-        .run_command(
-            doc! { "listIndexes": MultipleSyncCollConf::collection_name() },
-            None,
-        )
+        .run_command(doc! { "listIndexes": MultipleSyncCollConf::collection_name() })
         .await
         .unwrap();
 
@@ -173,10 +167,7 @@ async fn multiple_sync() {
         .unwrap();
 
     let ret = db
-        .run_command(
-            doc! { "listIndexes": MultipleNoLastSeenCollConf::collection_name() },
-            None,
-        )
+        .run_command(doc! { "listIndexes": MultipleNoLastSeenCollConf::collection_name() })
         .await
         .unwrap();
 
@@ -215,10 +206,7 @@ async fn multiple_sync() {
         .unwrap();
 
     let ret = db
-        .run_command(
-            doc! { "listIndexes": MultipleNotUniqueCollConf::collection_name() },
-            None,
-        )
+        .run_command(doc! { "listIndexes": MultipleNotUniqueCollConf::collection_name() })
         .await
         .unwrap();
 

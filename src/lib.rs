@@ -108,7 +108,7 @@ pub use mongodb::bson;
 pub use mongodb::bson::{bson, doc};
 
 /// Associate a collection configuration.
-pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin {
+pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin + Send + Sync {
     type CollConf: CollectionConfig;
 }
 
@@ -128,8 +128,8 @@ pub trait CollectionConfig {
     /// Configure how indexes should be created and synchronized for the associated collection.
     ///
     /// This method has a default implementation returning no index (only special `_id` index will be present).
-    fn indexes() -> index::Indexes {
-        index::Indexes::default()
+    fn indexes() -> Indexes {
+        Indexes::default()
     }
 }
 
@@ -178,13 +178,14 @@ pub mod prelude {
         JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope, Regex as BsonRegex,
         Serializer as BsonSerializer, Timestamp as BsonTimestamp,
     };
+
     #[doc(no_inline)]
     pub use crate::mongo::{
         error::{
-            BulkWriteError as MongoBulkWriteError, BulkWriteFailure as MongoBulkWriteFailure,
-            CommandError as MongoCommandError, Error as MongoError, ErrorKind as MongoErrorKind,
-            WriteConcernError as MongoWriteConcernError, WriteError as MongoWriteError,
-            WriteFailure as MongoWriteFailure,
+            BulkWriteError as MongoBulkWriteError, CommandError as MongoCommandError,
+            Error as MongoError, ErrorKind as MongoErrorKind,
+            InsertManyError as MongoInsertManyError, WriteConcernError as MongoWriteConcernError,
+            WriteError as MongoWriteError, WriteFailure as MongoWriteFailure,
         },
         options::{
             Acknowledgment as MongoAcknowledgment, AggregateOptions as MongoAggregateOptions,
