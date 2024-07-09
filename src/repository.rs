@@ -43,21 +43,19 @@ pub struct BulkUpdateUpsertResult {
 /// This type can safely be copied and passed around because `std::sync::Arc` is used internally.
 /// Underlying `mongodb::Collection` can be retrieved at anytime with `Repository::get_underlying`.
 #[derive(Debug)]
-pub struct Repository<M: Model + Send + Sync> {
+pub struct Repository<M: Model> {
     db: mongodb::Database, // FIXME: temporary keep reference to database object for `bulk_update` operation
     coll: mongodb::Collection<M>,
 }
 
-impl<M: Model + Send + Sync> Deref for Repository<M> {
+impl<M: Model> Deref for Repository<M> {
     type Target = mongodb::Collection<M>;
     fn deref(&self) -> &mongodb::Collection<M> {
         &self.coll
     }
 }
 
-impl<M: Model + Send + Sync> Clone
-    for Repository<M>
-{
+impl<M: Model> Clone for Repository<M> {
     fn clone(&self) -> Self {
         Self {
             db: self.db.clone(),
@@ -66,7 +64,7 @@ impl<M: Model + Send + Sync> Clone
     }
 }
 
-impl<M: Model + Send + Sync> Repository<M> {
+impl<M: Model> Repository<M> {
     /// Create a new repository from the given mongo client.
     pub fn new(db: mongodb::Database) -> Self {
         let coll = if let Some(options) = M::CollConf::collection_options() {
@@ -222,9 +220,7 @@ impl<M: Model + Send + Sync> Repository<M> {
     /// ```
     pub fn cast_model<OtherModel>(self) -> Repository<OtherModel>
     where
-        OtherModel: Model<CollConf = M::CollConf>
-            + Send
-            + Sync
+        OtherModel: Model<CollConf = M::CollConf>,
     {
         Repository {
             db: self.db,
@@ -281,7 +277,6 @@ impl<M: Model + Send + Sync> Repository<M> {
     /// ```
     pub async fn bulk_update<V, U>(&self, updates: V) -> Result<BulkUpdateResult>
     where
-        M: Send + Sync,
         V: Borrow<Vec<U>> + Send + Sync,
         U: Borrow<BulkUpdate> + Send + Sync,
     {

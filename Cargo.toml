@@ -17,15 +17,8 @@ serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
 async-trait = "0.1"
-#tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
 tokio = "1.14.0"
 pretty_assertions = "1.0.0"
 chrono = { version = "0.4.38", features = [ "serde" ] }
-
-#[features]
-#default = ["tokio-runtime"]
-#tokio-runtime = ["mongodb/tokio-runtime"]
-#async-std-runtime = ["mongodb/async-std-runtime"]
-#chrono-0_4 = ["mongodb/bson-chrono-0_4"]

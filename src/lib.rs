@@ -108,7 +108,7 @@ pub use mongodb::bson;
 pub use mongodb::bson::{bson, doc};
 
 /// Associate a collection configuration.
-pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin {
+pub trait Model: serde::ser::Serialize + serde::de::DeserializeOwned + Unpin + Send + Sync {
     type CollConf: CollectionConfig;
 }
 
@@ -136,21 +136,21 @@ pub trait CollectionConfig {
 /// Utilities methods to get a `Repository`. Implemented for `mongodb::Database`.
 pub trait ToRepository {
     /// Shorthand for `Repository::<Model>::new`.
-    fn repository<M: Model + Send + Sync>(&self) -> Repository<M>;
+    fn repository<M: Model>(&self) -> Repository<M>;
 
     /// Shorthand for `Repository::<Model>::new_with_options`.
-    fn repository_with_options<M: Model + Send + Sync>(
+    fn repository_with_options<M: Model>(
         &self,
         options: mongodb::options::CollectionOptions,
     ) -> Repository<M>;
 }
 
 impl ToRepository for mongodb::Database {
-    fn repository<M: Model + Send + Sync>(&self) -> Repository<M> {
+    fn repository<M: Model>(&self) -> Repository<M> {
         Repository::new(self.clone())
     }
 
-    fn repository_with_options<M: Model + Send + Sync>(
+    fn repository_with_options<M: Model>(
         &self,
         options: mongodb::options::CollectionOptions,
     ) -> Repository<M> {
@@ -178,7 +178,7 @@ pub mod prelude {
         JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope, Regex as BsonRegex,
         Serializer as BsonSerializer, Timestamp as BsonTimestamp,
     };
-    //See driver pull request change for errors: https://github.com/mongodb/mongo-rust-driver/pull/1102
+
     #[doc(no_inline)]
     pub use crate::mongo::{
         error::{
