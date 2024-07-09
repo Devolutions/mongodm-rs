@@ -280,7 +280,7 @@ impl<M: Model> Repository<M> {
         V: Borrow<Vec<U>> + Send + Sync,
         U: Borrow<BulkUpdate> + Send + Sync,
     {
-        Ok(self.coll.bulk_update(&self.db, updates).await?)
+        self.coll.bulk_update(&self.db, updates).await
     }
 }
 
