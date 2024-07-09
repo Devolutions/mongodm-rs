@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
+
+env:
+  # Disable incremental compilation. CI builds are often closer to from-scratch builds, as changes
+  # are typically bigger than from a local edit-compile cycle.
+  # Incremental compilation also significantly increases the amount of IO and the size of ./target
+  # folder, which makes caching less effective.
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  RUST_BACKTRACE: short
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  # Cache should never takes more than a few seconds to get downloaded.
+  # If it does, let’s just rebuild from scratch instead of hanging "forever".
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: 1
+  # Disabling debug info so compilation is faster and ./target folder is smaller.
+  CARGO_PROFILE_DEV_DEBUG: 0
+
+jobs:
+  formatting:
+    name: Check formatting
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+  checks:
+    name: Checks [${{ matrix.os }}]
+    runs-on: ${{ matrix.runner }}
+    needs: formatting
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows, linux ]
+        include:
+          - os: windows
+            runner: windows-2019
+          - os: linux
+            runner: ubuntu-22.04 # 22.04 because we need a recent wabt version
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Tests
+        run: cargo test --workspace -v
+
+      - name: Lints
+        run: cargo clippy --workspace -v -- -Dwarnings
+
+  success:
+    name: Success
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+    needs:
+      - formatting
+      - checks
+
+    steps:
+      - name: CI succeeded
+        run: exit 0
