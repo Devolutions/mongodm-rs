@@ -230,7 +230,7 @@ pub mod prelude {
         Model, Repository, SortOrder, ToRepository as _,
     };
     #[doc(no_inline)]
-    pub use futures_util::future::{BoxFuture, FutureExt};
+    pub use futures_util::future::{FutureExt, TryFutureExt};
     #[doc(no_inline)]
-    pub use futures_util::StreamExt;
+    pub use futures_util::{StreamExt, TryStreamExt};
 }

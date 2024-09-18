@@ -13,6 +13,7 @@ include = ["src/**/*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 mongodb = { version = "3", default-features = true }
+bson = { version = ">=2.12", default-features = false }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
@@ -22,3 +23,6 @@ async-trait = "0.1"
 tokio = "1.14.0"
 pretty_assertions = "1.0.0"
 chrono = { version = "0.4.38", features = [ "serde" ] }
+
+[features]
+chrono-0_4 = ["bson/chrono-0_4"]
