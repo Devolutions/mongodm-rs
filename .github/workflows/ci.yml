@@ -45,7 +45,7 @@ jobs:
         os: [ windows, linux ]
         include:
           - os: windows
-            runner: windows-2019
+            runner: windows-latest
           - os: linux
             runner: ubuntu-22.04 # 22.04 because we need a recent wabt version
 
