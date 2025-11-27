@@ -12,13 +12,13 @@ readme = "README.md"
 include = ["src/**/*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
-mongodb = { version = "3", default-features = true }
+mongodb = { version = "3.4", default-features = true }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
 async-trait = "0.1"
 
 [dev-dependencies]
-tokio = "1.14.0"
-pretty_assertions = "1.0.0"
-chrono = { version = "0.4.38", features = [ "serde" ] }
+tokio = "1"
+pretty_assertions = "1"
+chrono = { version = "0.4", features = ["serde"] }
