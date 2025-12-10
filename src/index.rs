@@ -349,18 +349,15 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
 
     match h_run_command(db, doc! { "listIndexes": CollConf::collection_name() }).await {
         Ok(ret) => {
-            let parsed_ret: ListIndexesRet = deserialize_from_bson(Bson::Document(ret))
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            let parsed_ret: ListIndexesRet =
+                deserialize_from_bson(Bson::Document(ret)).map_err(std::io::Error::other)?;
 
             if parsed_ret.cursor.id != 0 {
                 // batch isn't complete
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
-                        "couldn't list all indexes from '{}'",
-                        CollConf::collection_name()
-                    ),
-                )
+                return Err(std::io::Error::other(format!(
+                    "couldn't list all indexes from '{}'",
+                    CollConf::collection_name()
+                ))
                 .into());
             }
 
@@ -390,9 +387,9 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                     index.into_document()
                 };
 
-                let key = index_doc.get("key").ok_or_else(|| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "index doc is missing 'key'")
-                })?;
+                let key = index_doc
+                    .get("key")
+                    .ok_or_else(|| std::io::Error::other("index doc is missing 'key'"))?;
                 if let Some(mut existing_index) = existing_indexes.remove(&key.to_string()) {
                     // "ns" and "v" in the response should not be used for the comparison
                     existing_index.remove("ns");
@@ -419,9 +416,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                                 to_drop.push(
                                     index_doc
                                         .get_str("name")
-                                        .map_err(|e| {
-                                            std::io::Error::new(std::io::ErrorKind::Other, e)
-                                        })?
+                                        .map_err(std::io::Error::other)?
                                         .to_owned(),
                                 );
                             }
@@ -436,7 +431,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                         to_drop.push(
                             index_doc
                                 .get_str("name")
-                                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                                .map_err(std::io::Error::other)?
                                 .to_owned(),
                         );
                     }
@@ -449,7 +444,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
             for existing_index in existing_indexes.values() {
                 let name = existing_index
                     .get_str("name")
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+                    .map_err(std::io::Error::other)?
                     .to_owned();
                 if name != "_id_" {
                     to_drop.push(name);
