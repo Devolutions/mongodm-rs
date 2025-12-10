@@ -1,9 +1,14 @@
 //! Indexes are used for efficient mongo queries.
 
 use crate::CollectionConfig;
-use mongodb::bson::{doc, from_bson, Bson, Document};
-use mongodb::options::ReadPreference;
-use mongodb::options::{RunCommandOptions, SelectionCriteria};
+
+#[cfg(feature = "compat-3-3-0")]
+use mongodb::bson::deserialize_from_bson;
+#[cfg(feature = "compat-3-0-0")]
+use mongodb::bson::from_bson as deserialize_from_bson;
+
+use mongodb::bson::{doc, Bson, Document};
+use mongodb::options::{ReadPreference, RunCommandOptions, SelectionCriteria};
 use mongodb::Database;
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -344,7 +349,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
 
     match h_run_command(db, doc! { "listIndexes": CollConf::collection_name() }).await {
         Ok(ret) => {
-            let parsed_ret: ListIndexesRet = from_bson(Bson::Document(ret))
+            let parsed_ret: ListIndexesRet = deserialize_from_bson(Bson::Document(ret))
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
             if parsed_ret.cursor.id != 0 {
@@ -512,7 +517,9 @@ async fn h_run_command(
         .run_command(command_doc)
         .with_options(primary_options)
         .await?;
-    if let Ok(err) = from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone())) {
+    if let Ok(err) =
+        deserialize_from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone()))
+    {
         Err(mongodb::error::Error::from(
             mongodb::error::ErrorKind::Command(err),
         ))

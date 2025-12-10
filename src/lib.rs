@@ -170,10 +170,14 @@ impl ToRepository for mongodb::Database {
 /// // ...
 /// ```
 pub mod prelude {
-    #[doc(no_inline)]
+    #[cfg(feature = "compat-3-0-0")]
+    pub use mongodb::bson::de::Error as BsonDeserializeError;
+    #[cfg(feature = "compat-3-3-0")]
+    pub use mongodb::bson::error::Error as BsonError;
+
+    pub use crate::mongo::bson::oid::ObjectId;
     pub use crate::mongo::bson::{
-        bson, de::Error as BsonDeError, doc, from_bson, oid::ObjectId, ser::Error as BsonSerError,
-        to_bson, Binary as BsonBinary, Bson, DateTime as BsonDateTime,
+        bson, doc, Binary as BsonBinary, Bson, DateTime as BsonDateTime,
         Deserializer as BsonDeserializer, Document as BsonDocument,
         JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope, Regex as BsonRegex,
         Serializer as BsonSerializer, Timestamp as BsonTimestamp,

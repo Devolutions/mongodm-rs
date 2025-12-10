@@ -3,7 +3,13 @@
 use crate::{CollectionConfig, Model};
 use async_trait::async_trait;
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::{doc, from_document, to_bson, Document};
+use mongodb::bson::{doc, Document};
+
+#[cfg(feature = "compat-3-3-0")]
+use mongodb::bson::{deserialize_from_document, serialize_to_bson};
+#[cfg(feature = "compat-3-0-0")]
+use mongodb::bson::{from_document as deserialize_from_document, to_bson as serialize_to_bson};
+
 use mongodb::error::Result;
 use mongodb::options::*;
 use serde::Deserialize;
@@ -362,13 +368,13 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
                     doc.insert("upsert", upsert);
                 }
                 if let Some(ref collation) = options.collation {
-                    doc.insert("collation", to_bson(collation)?);
+                    doc.insert("collation", serialize_to_bson(collation)?);
                 }
                 if let Some(ref array_filters) = options.array_filters {
                     doc.insert("arrayFilters", array_filters);
                 }
                 if let Some(ref hint) = options.hint {
-                    doc.insert("hint", to_bson(hint)?);
+                    doc.insert("hint", serialize_to_bson(hint)?);
                 }
             }
             update_docs.push(doc);
@@ -378,9 +384,9 @@ impl<M: Send + Sync> CollectionExt for mongodb::Collection<M> {
             "updates": update_docs,
         };
         if let Some(ref write_concern) = self.write_concern() {
-            command.insert("writeConcern", to_bson(write_concern)?);
+            command.insert("writeConcern", serialize_to_bson(write_concern)?);
         }
         let res = db.run_command(command).await?;
-        Ok(from_document(res)?)
+        Ok(deserialize_from_document(res)?)
     }
 }
