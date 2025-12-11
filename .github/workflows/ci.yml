@@ -56,10 +56,10 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.3
 
       - name: Lints (compat-3-0-0)
-        run: cargo clippy --workspace --no-default-features --features compat-3-0-0 -v -- -Dwarnings
+        run: cargo clippy --workspace --no-default-features --features "compat-3-0-0 openssl" -v -- -Dwarnings
 
       - name: Lints (compat-3-3-0)
-        run: cargo clippy --workspace --no-default-features --features compat-3-3-0 -v -- -Dwarnings
+        run: cargo clippy --workspace --no-default-features --features "compat-3-3-0 openssl" -v -- -Dwarnings
 
       - name: Tests
         run: cargo test --workspace -v
