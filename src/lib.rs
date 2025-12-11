@@ -95,7 +95,7 @@ mod repository;
 
 pub mod operator;
 
-pub use index::{sync_indexes, Index, IndexOption, Indexes, SortOrder};
+pub use index::{Index, IndexOption, Indexes, SortOrder, sync_indexes};
 pub use repository::{
     BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, CollectionExt, Repository,
 };
@@ -177,14 +177,15 @@ pub mod prelude {
 
     pub use crate::mongo::bson::oid::ObjectId;
     pub use crate::mongo::bson::{
-        bson, doc, Binary as BsonBinary, Bson, DateTime as BsonDateTime,
-        Deserializer as BsonDeserializer, Document as BsonDocument,
-        JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope, Regex as BsonRegex,
-        Serializer as BsonSerializer, Timestamp as BsonTimestamp,
+        Binary as BsonBinary, Bson, DateTime as BsonDateTime, Deserializer as BsonDeserializer,
+        Document as BsonDocument, JavaScriptCodeWithScope as BsonJavaScriptCodeWithScope,
+        Regex as BsonRegex, Serializer as BsonSerializer, Timestamp as BsonTimestamp, bson, doc,
     };
 
     #[doc(no_inline)]
     pub use crate::mongo::{
+        Client as MongoClient, Collection as MongoCollection, Cursor as MongoCursor,
+        Database as MongoDatabase,
         error::{
             BulkWriteError as MongoBulkWriteError, CommandError as MongoCommandError,
             Error as MongoError, ErrorKind as MongoErrorKind,
@@ -224,17 +225,15 @@ pub mod prelude {
             DeleteResult as MongoDeleteResult, InsertManyResult as MongoInsertManyResult,
             InsertOneResult as MongoInsertOneResult, UpdateResult as MongoUpdateResult,
         },
-        Client as MongoClient, Collection as MongoCollection, Cursor as MongoCursor,
-        Database as MongoDatabase,
     };
     #[doc(no_inline)]
     pub use crate::{
-        f, field, operator::*, pipeline, sync_indexes, BulkUpdate, BulkUpdateResult,
-        BulkUpdateUpsertResult, CollectionConfig, CollectionExt as _, Index, IndexOption, Indexes,
-        Model, Repository, SortOrder, ToRepository as _,
+        BulkUpdate, BulkUpdateResult, BulkUpdateUpsertResult, CollectionConfig, CollectionExt as _,
+        Index, IndexOption, Indexes, Model, Repository, SortOrder, ToRepository as _, f, field,
+        operator::*, pipeline, sync_indexes,
     };
     #[doc(no_inline)]
-    pub use futures_util::future::{BoxFuture, FutureExt};
-    #[doc(no_inline)]
     pub use futures_util::StreamExt;
+    #[doc(no_inline)]
+    pub use futures_util::future::{BoxFuture, FutureExt};
 }

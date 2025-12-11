@@ -3,7 +3,7 @@
 use crate::{CollectionConfig, Model};
 use async_trait::async_trait;
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{Document, doc};
 
 #[cfg(feature = "compat-3-3-0")]
 use mongodb::bson::{deserialize_from_document, serialize_to_bson};
