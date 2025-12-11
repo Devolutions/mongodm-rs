@@ -7,9 +7,9 @@ use mongodb::bson::deserialize_from_bson;
 #[cfg(feature = "compat-3-0-0")]
 use mongodb::bson::from_bson as deserialize_from_bson;
 
-use mongodb::bson::{doc, Bson, Document};
-use mongodb::options::{ReadPreference, RunCommandOptions, SelectionCriteria};
 use mongodb::Database;
+use mongodb::bson::{Bson, Document, doc};
+use mongodb::options::{ReadPreference, RunCommandOptions, SelectionCriteria};
 use serde::Deserialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -396,32 +396,31 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                     existing_index.remove("v");
 
                     // We compare the text index here, the keys become weights of 1 after saving in the DB. Custom weights not supported yet.
-                    if let Some(Bson::Document(mut keys_to_set)) = text_index_keys {
-                        if let Some(Bson::Document(existing_weights)) =
+                    if let Some(Bson::Document(mut keys_to_set)) = text_index_keys
+                        && let Some(Bson::Document(existing_weights)) =
                             existing_index.get("weights")
-                        {
-                            // Changing all text values to the default weight of 1
-                            for keys in keys_to_set.iter_mut() {
-                                match keys.1 {
-                                    Bson::String(t) if t == "text" => {
-                                        *keys.1 = Bson::Int32(1);
-                                    }
-                                    _ => (),
+                    {
+                        // Changing all text values to the default weight of 1
+                        for keys in keys_to_set.iter_mut() {
+                            match keys.1 {
+                                Bson::String(t) if t == "text" => {
+                                    *keys.1 = Bson::Int32(1);
                                 }
+                                _ => (),
                             }
-
-                            if existing_weights.eq(&keys_to_set) {
-                                already_sync.push(i);
-                            } else {
-                                to_drop.push(
-                                    index_doc
-                                        .get_str("name")
-                                        .map_err(std::io::Error::other)?
-                                        .to_owned(),
-                                );
-                            }
-                            continue;
                         }
+
+                        if existing_weights.eq(&keys_to_set) {
+                            already_sync.push(i);
+                        } else {
+                            to_drop.push(
+                                index_doc
+                                    .get_str("name")
+                                    .map_err(std::io::Error::other)?
+                                    .to_owned(),
+                            );
+                        }
+                        continue;
                     }
 
                     if doc_are_eq(&index_doc, &existing_index) {
