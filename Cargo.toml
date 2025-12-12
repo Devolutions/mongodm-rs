@@ -12,12 +12,14 @@ readme = "README.md"
 include = ["src/**/*", "README.md", "CHANGELOG.md"]
 
 [features]
-default = ["compat-3-0-0"]
+default = ["compat-3-0-0", "rustls"]
 compat-3-0-0 = ["mongodb/compat-3-0-0"]
 compat-3-3-0 = ["mongodb/compat-3-3-0", "mongodb/bson-3"]
+openssl = ["mongodb/openssl-tls"]
+rustls = ["mongodb/rustls-tls"]
 
 [dependencies]
-mongodb = { version = "3", default-features = false, features = ["dns-resolver", "rustls-tls"] }
+mongodb = { version = "3", default-features = false, features = ["dns-resolver"] }
 serde = { version = "1", features = ["derive"] }
 futures-core = "0.3"
 futures-util = "0.3"
