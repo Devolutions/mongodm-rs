@@ -1,0 +1,2 @@
+doc-valid-idents = ["MongoDB", "MongODM"]
+too-many-lines-threshold = 130
