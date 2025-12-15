@@ -31,6 +31,8 @@ pretty_assertions = "1.0.0"
 chrono = { version = "0.4.38", features = [ "serde" ] }
 
 [lints.clippy]
-must_use_candidate = { level = "allow" }
+doc_markdown = { level = "deny", priority = -1 }
+missing_const_for_fn = { level = "allow" }
 missing_errors_doc = { level = "allow" }
+must_use_candidate = { level = "allow" }
 return_self_not_must_use = { level = "allow" }
