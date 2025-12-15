@@ -18,7 +18,7 @@ compat-3-3-0 = ["mongodb/compat-3-3-0", "bson3"]
 bson-3 = ["mongodb/bson-3"]
 openssl = ["mongodb/openssl-tls"]
 rustls = ["mongodb/rustls-tls"]
-chrono = ["bson2?/chrono", "bson3?/chrono"]
+chrono = ["bson2?/chrono-0_4", "bson3?/chrono-0_4"]
 
 [dependencies]
 mongodb = { version = "3", default-features = false, features = ["dns-resolver"] }
