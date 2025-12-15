@@ -11,7 +11,7 @@ use mongodb::bson::{deserialize_from_document, serialize_to_bson};
 use mongodb::bson::{from_document as deserialize_from_document, to_bson as serialize_to_bson};
 
 use mongodb::error::Result;
-use mongodb::options::*;
+use mongodb::options::{CollectionOptions, UpdateOptions};
 use serde::Deserialize;
 use std::borrow::Borrow;
 use std::ops::Deref;
@@ -73,11 +73,10 @@ impl<M: Model> Clone for Repository<M> {
 impl<M: Model> Repository<M> {
     /// Create a new repository from the given mongo client.
     pub fn new(db: mongodb::Database) -> Self {
-        let coll = if let Some(options) = M::CollConf::collection_options() {
-            db.collection_with_options(M::CollConf::collection_name(), options)
-        } else {
-            db.collection(M::CollConf::collection_name())
-        };
+        let coll = M::CollConf::collection_options().map_or_else(
+            || db.collection(M::CollConf::collection_name()),
+            |options| db.collection_with_options(M::CollConf::collection_name(), options),
+        );
 
         Self { db, coll }
     }

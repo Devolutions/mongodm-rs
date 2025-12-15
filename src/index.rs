@@ -17,7 +17,7 @@ use std::collections::HashMap;
 /// Index sort order (useful for compound indexes).
 ///
 /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/#sort-order)
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortOrder {
     Ascending,
     Descending,
@@ -41,26 +41,26 @@ enum IndexKey {
 impl IndexKey {
     fn get_key_name(&self) -> String {
         match self {
-            IndexKey::SortIndex(s) => match s.direction {
+            Self::SortIndex(s) => match s.direction {
                 SortOrder::Ascending => format!("{}_1", s.name),
                 SortOrder::Descending => format!("{}_-1", s.name),
             },
 
-            IndexKey::TextIndex(t) => format!("{}_text", t.name),
+            Self::TextIndex(t) => format!("{}_text", t.name),
         }
     }
 
     fn get_name(&self) -> String {
         match self {
-            IndexKey::SortIndex(s) => s.name.to_string(),
-            IndexKey::TextIndex(t) => t.name.to_string(),
+            Self::SortIndex(s) => s.name.to_string(),
+            Self::TextIndex(t) => t.name.to_string(),
         }
     }
 
     fn get_value(&self) -> Bson {
         match self {
-            IndexKey::SortIndex(s) => s.direction.into(),
-            IndexKey::TextIndex(_) => "text".into(),
+            Self::SortIndex(s) => s.direction.into(),
+            Self::TextIndex(_) => "text".into(),
         }
     }
 }
@@ -135,7 +135,7 @@ impl Index {
     ///
     /// [Mongo manual](https://docs.mongodb.com/manual/core/index-compound/).
     pub fn add_key(&mut self, key: impl Into<Cow<'static, str>>) {
-        self.add_key_with_direction(key, SortOrder::Ascending)
+        self.add_key_with_direction(key, SortOrder::Ascending);
     }
 
     /// Builder style method for `add_key`.
@@ -297,37 +297,35 @@ pub enum IndexOption {
 impl IndexOption {
     pub fn name(&self) -> &str {
         match self {
-            IndexOption::Background => "background",
-            IndexOption::Unique => "unique",
-            IndexOption::Name(..) => "name",
-            IndexOption::PartialFilterExpression(..) => "partialFilterExpression",
-            IndexOption::Sparse => "sparse",
-            IndexOption::ExpireAfterSeconds(..) => "expireAfterSeconds",
-            IndexOption::StorageEngine(..) => "storageEngine",
-            IndexOption::Collation(..) => "collation",
-            IndexOption::Weights(..) => "weights",
-            IndexOption::Custom { name, .. } => name.as_str(),
+            Self::Background => "background",
+            Self::Unique => "unique",
+            Self::Name(..) => "name",
+            Self::PartialFilterExpression(..) => "partialFilterExpression",
+            Self::Sparse => "sparse",
+            Self::ExpireAfterSeconds(..) => "expireAfterSeconds",
+            Self::StorageEngine(..) => "storageEngine",
+            Self::Collation(..) => "collation",
+            Self::Weights(..) => "weights",
+            Self::Custom { name, .. } => name.as_str(),
         }
     }
 
     pub fn into_value(self) -> Bson {
         match self {
-            IndexOption::Background | IndexOption::Unique | IndexOption::Sparse => {
-                Bson::Boolean(true)
-            }
-            IndexOption::Name(val) => Bson::String(val),
-            IndexOption::ExpireAfterSeconds(val) => Bson::Int32(val),
-            IndexOption::PartialFilterExpression(doc)
-            | IndexOption::StorageEngine(doc)
-            | IndexOption::Collation(doc) => Bson::Document(doc),
-            IndexOption::Weights(w) => {
+            Self::Background | Self::Unique | Self::Sparse => Bson::Boolean(true),
+            Self::Name(val) => Bson::String(val),
+            Self::ExpireAfterSeconds(val) => Bson::Int32(val),
+            Self::PartialFilterExpression(doc)
+            | Self::StorageEngine(doc)
+            | Self::Collation(doc) => Bson::Document(doc),
+            Self::Weights(w) => {
                 let mut doc = Document::new();
-                w.into_iter().for_each(|(k, v)| {
+                for (k, v) in w {
                     doc.insert(k, Bson::from(v));
-                });
+                }
                 Bson::Document(doc)
             }
-            IndexOption::Custom { value, .. } => value,
+            Self::Custom { value, .. } => value,
         }
     }
 
@@ -511,15 +509,14 @@ async fn h_run_command(
         .run_command(command_doc)
         .with_options(primary_options)
         .await?;
-    if let Ok(err) =
-        deserialize_from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone()))
-    {
-        Err(mongodb::error::Error::from(
-            mongodb::error::ErrorKind::Command(err),
-        ))
-    } else {
-        Ok(ret)
-    }
+    deserialize_from_bson::<mongodb::error::CommandError>(Bson::Document(ret.clone())).map_or_else(
+        |_| Ok(ret),
+        |err| {
+            Err(mongodb::error::Error::from(
+                mongodb::error::ErrorKind::Command(err),
+            ))
+        },
+    )
 }
 
 #[derive(Deserialize)]
