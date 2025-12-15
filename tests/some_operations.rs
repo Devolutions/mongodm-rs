@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate pretty_assertions;
+use pretty_assertions::assert_eq;
 
 use futures_util::StreamExt;
 use mongodm::prelude::*;

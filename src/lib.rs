@@ -85,10 +85,6 @@
 //! # rt.block_on(demo());
 //! ```
 
-#[macro_use]
-#[cfg(test)]
-extern crate pretty_assertions;
-
 mod index;
 mod macros;
 mod repository;
