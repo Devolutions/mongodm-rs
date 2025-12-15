@@ -172,7 +172,7 @@ impl ToRepository for mongodb::Database {
 pub mod prelude {
     #[cfg(feature = "compat-3-0-0")]
     pub use mongodb::bson::de::Error as BsonDeserializeError;
-    #[cfg(feature = "compat-3-3-0")]
+    #[cfg(feature = "bson-3")]
     pub use mongodb::bson::error::Error as BsonError;
 
     pub use crate::mongo::bson::oid::ObjectId;
