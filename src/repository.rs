@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{Document, doc};
 
-#[cfg(feature = "compat-3-3-0")]
+#[cfg(feature = "bson-3")]
 use mongodb::bson::{deserialize_from_document, serialize_to_bson};
 #[cfg(feature = "compat-3-0-0")]
 use mongodb::bson::{from_document as deserialize_from_document, to_bson as serialize_to_bson};

@@ -55,11 +55,11 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Lints (compat-3-0-0)
+      - name: Lints (bson 2)
         run: cargo clippy --workspace --no-default-features --features "compat-3-0-0 rustls" -v -- -Dwarnings
 
-      - name: Lints (compat-3-3-0)
-        run: cargo clippy --workspace --no-default-features --features "compat-3-3-0 rustls" -v -- -Dwarnings
+      - name: Lints (bson 3)
+        run: cargo clippy --workspace --no-default-features --features "compat-3-3-0 bson-3 rustls" -v -- -Dwarnings
 
       - name: Tests
         run: cargo test --workspace -v

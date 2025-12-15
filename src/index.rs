@@ -2,7 +2,7 @@
 
 use crate::CollectionConfig;
 
-#[cfg(feature = "compat-3-3-0")]
+#[cfg(feature = "bson-3")]
 use mongodb::bson::deserialize_from_bson;
 #[cfg(feature = "compat-3-0-0")]
 use mongodb::bson::from_bson as deserialize_from_bson;
