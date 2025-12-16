@@ -9,29 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### <!-- 1 -->Features
 
-- Add bson3 feature ([#36](https://github.com/Devolutions/mongodm-rs/issues/36)) ([61d422e43f](https://github.com/Devolutions/mongodm-rs/commit/61d422e43ff251338bfdfd6caa11afcf6fff17b0)) 
+- Add compat-3-3-0 and bson-3 features ([#36](https://github.com/Devolutions/mongodm-rs/issues/36)) ([61d422e43f](https://github.com/Devolutions/mongodm-rs/commit/61d422e43ff251338bfdfd6caa11afcf6fff17b0)) ([#44](https://github.com/Devolutions/mongodm-rs/issues/44)) ([65b11f9f46](https://github.com/Devolutions/mongodm-rs/commit/65b11f9f46a893e7a12abfb6aad106f363d15222)) 
 
-  [mongo 3.4.1](https://docs.rs/crate/mongodb/3.4.1/features) uses bson 2
-  by default via the `compat-3-0-0` feature. However, there is support for
-  bson 3 in `compat-3-3-0`.
-  
   This adds the ability to use bson 3 just like the upstream mongodb
   driver.
 
 - Add openssl feature ([#37](https://github.com/Devolutions/mongodm-rs/issues/37)) ([044b904d93](https://github.com/Devolutions/mongodm-rs/commit/044b904d9351cf16858bc84caa4706f4012e4b97)) 
 
 - Add chrono feature for bson ([#45](https://github.com/Devolutions/mongodm-rs/issues/45)) ([3fcd61b6ca](https://github.com/Devolutions/mongodm-rs/commit/3fcd61b6ca03cef4cf4c729a14ec909578e5206f)) 
-
-  This is on top of #44.
-
-### <!-- 4 -->Bug Fixes
-
-- Separate bson-3 from compat-3-3-0 ([#44](https://github.com/Devolutions/mongodm-rs/issues/44)) ([65b11f9f46](https://github.com/Devolutions/mongodm-rs/commit/65b11f9f46a893e7a12abfb6aad106f363d15222)) 
-
-  This is a correction to split `bson-3` into its own feature. Upstream
-  `compat-3-3-0` does not actually imply `bson-3`.
-
-
 
 ## [0.9.0] 2022-05-02
 
