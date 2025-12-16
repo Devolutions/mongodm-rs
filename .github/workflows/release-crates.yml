@@ -14,6 +14,7 @@ jobs:
   # Create a PR with the new versions and changelog, preparing the next release.
   open-pr:
     name: Open release PR
+    environment: cratesio-publish
     runs-on: ubuntu-latest
     concurrency:
       group: release-plz-${{ github.ref }}
