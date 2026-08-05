@@ -392,6 +392,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                     // "ns" and "v" in the response should not be used for the comparison
                     existing_index.remove("ns");
                     existing_index.remove("v");
+                    drop_server_filled_collation_fields(&index_doc, &mut existing_index);
 
                     // We compare the text index here, the keys become weights of 1 after saving in the DB. Custom weights not supported yet.
                     if let Some(Bson::Document(mut keys_to_set)) = text_index_keys
@@ -531,6 +532,33 @@ struct Cursor {
     pub first_batch: Vec<Document>,
 }
 
+/// Reduces the stored collation to the fields that were actually declared.
+///
+/// `MongoDB` expands a collation when it creates the index, returning every ICU field plus a
+/// `version` of its own, so a stored collation never looks like the one that was declared and
+/// `doc_are_eq` would report the index as changed on every sync. Declaring the expanded form is
+/// not an option either, since `version` is chosen by the server.
+///
+/// Only server-filled fields are discarded, so a change to a field that *was* declared still
+/// compares unequal and still rebuilds the index. A collation added to or removed from the
+/// declaration is left for `doc_are_eq` to catch as a difference in keys.
+fn drop_server_filled_collation_fields(declared: &Document, existing: &mut Document) {
+    let (Ok(declared_collation), Ok(existing_collation)) = (
+        declared.get_document("collation"),
+        existing.get_document("collation"),
+    ) else {
+        return;
+    };
+
+    let retained = existing_collation
+        .iter()
+        .filter(|(field, _)| declared_collation.contains_key(field.as_str()))
+        .map(|(field, value)| (field.clone(), value.clone()))
+        .collect::<Document>();
+
+    existing.insert("collation", retained);
+}
+
 fn doc_are_eq(a: &Document, b: &Document) -> bool {
     if a.len() != b.len() {
         return false;
@@ -584,6 +612,96 @@ mod tests {
                     },
                 ]
             }
+        );
+    }
+
+    /// The `listIndexes` entry `MongoDB` returns for an index declared with
+    /// `Collation(doc! { "locale": "en", "strength": 2 })`, after `sync_indexes` has stripped `ns`
+    /// and `v`. Captured from `MongoDB` 7 with ICU 57.1; the `version` value varies by build, which
+    /// is exactly why it cannot be declared.
+    fn stored_collated_index() -> Document {
+        doc! {
+            "key": { "field": 1 },
+            "name": "collated_field",
+            "collation": {
+                "locale": "en",
+                "caseLevel": false,
+                "caseFirst": "off",
+                "strength": 2,
+                "numericOrdering": false,
+                "alternate": "non-ignorable",
+                "maxVariable": "punct",
+                "normalization": false,
+                "backwards": false,
+                "version": "57.1",
+            },
+        }
+    }
+
+    fn declared_collated_index(collation: Document) -> Document {
+        Index::new("field")
+            .with_option(IndexOption::Name("collated_field".to_owned()))
+            .with_option(IndexOption::Collation(collation))
+            .into_document()
+    }
+
+    /// Without this, `sync_indexes` reports the index as changed on every run and rebuilds it: an
+    /// index rebuild on every process start, a window on each start where the collection is
+    /// unindexed, and no way for a caller to declare a collated index that ever settles.
+    #[test]
+    fn declared_collation_matches_the_expanded_one_the_server_stored() {
+        let declared = declared_collated_index(doc! { "locale": "en", "strength": 2 });
+        let mut stored = stored_collated_index();
+
+        drop_server_filled_collation_fields(&declared, &mut stored);
+
+        assert!(
+            doc_are_eq(&declared, &stored),
+            "declared {declared:?} should match the index it created, but got {stored:?}"
+        );
+    }
+
+    /// The counterpart: only server-filled fields may be discarded. A field that was declared and
+    /// then changed has to keep rebuilding the index, or a collation edit would never take effect.
+    #[test]
+    fn changing_a_declared_collation_field_is_still_detected() {
+        let declared = declared_collated_index(doc! { "locale": "en", "strength": 3 });
+        let mut stored = stored_collated_index();
+
+        drop_server_filled_collation_fields(&declared, &mut stored);
+
+        assert!(
+            !doc_are_eq(&declared, &stored),
+            "strength 3 was declared against a stored strength of 2 and should have been detected"
+        );
+    }
+
+    #[test]
+    fn adding_a_declared_collation_field_is_still_detected() {
+        let declared =
+            declared_collated_index(doc! { "locale": "en", "strength": 2, "backwards": true });
+        let mut stored = stored_collated_index();
+
+        drop_server_filled_collation_fields(&declared, &mut stored);
+
+        assert!(
+            !doc_are_eq(&declared, &stored),
+            "a newly declared `backwards` should have been detected"
+        );
+    }
+
+    #[test]
+    fn removing_the_collation_entirely_is_still_detected() {
+        let declared = Index::new("field")
+            .with_option(IndexOption::Name("collated_field".to_owned()))
+            .into_document();
+        let mut stored = stored_collated_index();
+
+        drop_server_filled_collation_fields(&declared, &mut stored);
+
+        assert!(
+            !doc_are_eq(&declared, &stored),
+            "dropping the collation from the declaration should have been detected"
         );
     }
 }

@@ -148,3 +148,123 @@ async fn multiple_sync() {
     let indexes = list_indexes(&db, MultipleNotUniqueCollConf::collection_name()).await;
     assert_synced_indexes(&indexes, doc! { "field": 1 }, false);
 }
+
+struct CollatedCollConf;
+
+impl CollectionConfig for CollatedCollConf {
+    fn collection_name() -> &'static str {
+        "collated_sync"
+    }
+
+    fn indexes() -> Indexes {
+        Indexes::new().with(
+            Index::new("field")
+                .with_option(IndexOption::Name("collated_field".to_owned()))
+                .with_option(IndexOption::Collation(
+                    doc! { "locale": "en", "strength": 2 },
+                )),
+        )
+    }
+}
+
+/// `accesses.since` is the point from which MongoDB gathered statistics for an index, so it is
+/// reset by a recreate and left alone by a genuine no-op.
+async fn index_stats_since(db: &mongodb::Database, index_name: &str) -> mongodb::bson::Bson {
+    let mut cursor = db
+        .collection::<Document>(CollatedCollConf::collection_name())
+        .aggregate(vec![doc! { "$indexStats": {} }])
+        .await
+        .unwrap();
+
+    while cursor.advance().await.unwrap() {
+        let stats = cursor.deserialize_current().unwrap();
+        if stats.get_str("name") == Ok(index_name) {
+            return stats
+                .get_document("accesses")
+                .unwrap()
+                .get("since")
+                .expect("$indexStats should report accesses.since")
+                .clone();
+        }
+    }
+
+    panic!("index `{index_name}` should exist after sync_indexes");
+}
+
+/// Documents the server behaviour the sync test depends on, and kept separate from it so a failure
+/// tells you which of the two broke: the server no longer expanding collations, or `sync_indexes`
+/// mishandling the expansion.
+#[tokio::test]
+#[ignore]
+async fn listindexes_returns_more_collation_fields_than_were_declared() {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
+
+    db.collection::<Document>(CollatedCollConf::collection_name())
+        .drop()
+        .await
+        .unwrap();
+
+    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
+
+    let ret = db
+        .run_command(doc! { "listIndexes": CollatedCollConf::collection_name() })
+        .await
+        .unwrap();
+
+    let stored = ret
+        .get_document("cursor")
+        .unwrap()
+        .get_array("firstBatch")
+        .unwrap()
+        .iter()
+        .filter_map(|index| index.as_document())
+        .find(|index| index.get_str("name") == Ok("collated_field"))
+        .expect("the collated index should have been created")
+        .clone();
+
+    let collation = stored
+        .get_document("collation")
+        .expect("a collated index should report its collation");
+
+    assert!(
+        collation.contains_key("version"),
+        "expected a server-supplied ICU version; got {collation:?}"
+    );
+    assert!(
+        collation.len() > 2,
+        "expected the server to expand the two declared fields; got {collation:?}"
+    );
+}
+
+/// A declared collation must converge: syncing twice must not rebuild the index. Otherwise every
+/// process start rebuilds it, leaving a window where the collection is unindexed, and no caller can
+/// declare a collated index that ever settles.
+#[tokio::test]
+#[ignore]
+async fn collated_index_is_not_rebuilt_on_every_sync() {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
+
+    db.collection::<Document>(CollatedCollConf::collection_name())
+        .drop()
+        .await
+        .unwrap();
+
+    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
+    let after_create = index_stats_since(&db, "collated_field").await;
+
+    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
+    let after_second_sync = index_stats_since(&db, "collated_field").await;
+
+    assert_eq!(
+        after_create, after_second_sync,
+        "the collated index was dropped and recreated by a sync that should have been a no-op"
+    );
+}
