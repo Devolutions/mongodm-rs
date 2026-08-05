@@ -149,29 +149,51 @@ async fn multiple_sync() {
     assert_synced_indexes(&indexes, doc! { "field": 1 }, false);
 }
 
-struct CollatedCollConf;
+fn collated_index() -> Indexes {
+    Indexes::new().with(
+        Index::new("field")
+            .with_option(IndexOption::Name("collated_field".to_owned()))
+            .with_option(IndexOption::Collation(
+                doc! { "locale": "en", "strength": 2 },
+            )),
+    )
+}
 
-impl CollectionConfig for CollatedCollConf {
+// A collection per test: libtest runs these concurrently under `--ignored`, and each one drops its
+// collection on the way in.
+struct CollatedSyncCollConf;
+
+impl CollectionConfig for CollatedSyncCollConf {
     fn collection_name() -> &'static str {
         "collated_sync"
     }
 
     fn indexes() -> Indexes {
-        Indexes::new().with(
-            Index::new("field")
-                .with_option(IndexOption::Name("collated_field".to_owned()))
-                .with_option(IndexOption::Collation(
-                    doc! { "locale": "en", "strength": 2 },
-                )),
-        )
+        collated_index()
+    }
+}
+
+struct CollatedExpansionCollConf;
+
+impl CollectionConfig for CollatedExpansionCollConf {
+    fn collection_name() -> &'static str {
+        "collated_expansion"
+    }
+
+    fn indexes() -> Indexes {
+        collated_index()
     }
 }
 
 /// `accesses.since` is the point from which MongoDB gathered statistics for an index, so it is
 /// reset by a recreate and left alone by a genuine no-op.
-async fn index_stats_since(db: &mongodb::Database, index_name: &str) -> mongodb::bson::Bson {
+async fn index_stats_since(
+    db: &mongodb::Database,
+    collection: &str,
+    index_name: &str,
+) -> mongodb::bson::Bson {
     let mut cursor = db
-        .collection::<Document>(CollatedCollConf::collection_name())
+        .collection::<Document>(collection)
         .aggregate(vec![doc! { "$indexStats": {} }])
         .await
         .unwrap();
@@ -203,15 +225,17 @@ async fn listindexes_returns_more_collation_fields_than_were_declared() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    db.collection::<Document>(CollatedCollConf::collection_name())
+    db.collection::<Document>(CollatedExpansionCollConf::collection_name())
         .drop()
         .await
         .unwrap();
 
-    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
+    sync_indexes::<CollatedExpansionCollConf>(&db)
+        .await
+        .unwrap();
 
     let ret = db
-        .run_command(doc! { "listIndexes": CollatedCollConf::collection_name() })
+        .run_command(doc! { "listIndexes": CollatedExpansionCollConf::collection_name() })
         .await
         .unwrap();
 
@@ -252,16 +276,14 @@ async fn collated_index_is_not_rebuilt_on_every_sync() {
     let client = Client::with_options(client_options).unwrap();
     let db = client.database("rust_mongo_orm_tests");
 
-    db.collection::<Document>(CollatedCollConf::collection_name())
-        .drop()
-        .await
-        .unwrap();
+    let collection = CollatedSyncCollConf::collection_name();
+    db.collection::<Document>(collection).drop().await.unwrap();
 
-    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
-    let after_create = index_stats_since(&db, "collated_field").await;
+    sync_indexes::<CollatedSyncCollConf>(&db).await.unwrap();
+    let after_create = index_stats_since(&db, collection, "collated_field").await;
 
-    sync_indexes::<CollatedCollConf>(&db).await.unwrap();
-    let after_second_sync = index_stats_since(&db, "collated_field").await;
+    sync_indexes::<CollatedSyncCollConf>(&db).await.unwrap();
+    let after_second_sync = index_stats_since(&db, collection, "collated_field").await;
 
     assert_eq!(
         after_create, after_second_sync,
