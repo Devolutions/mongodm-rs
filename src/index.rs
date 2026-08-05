@@ -385,7 +385,9 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                     index.into_document()
                 };
 
-                // Owned so the borrow on `index_doc` ends here: normalize_collations needs it mutably.
+                // Owned so the borrow on `index_doc` ends here: the collation rewrite below needs it
+                // mutably. Only the comparison copy is touched — `indexes` still carries the
+                // original declaration and is what `create_indexes_command` sends.
                 let key = index_doc
                     .get("key")
                     .ok_or_else(|| std::io::Error::other("index doc is missing 'key'"))?
@@ -394,7 +396,18 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                     // "ns" and "v" in the response should not be used for the comparison
                     existing_index.remove("ns");
                     existing_index.remove("v");
-                    normalize_collations(&mut index_doc, &mut existing_index);
+
+                    if let Some(declared_collation) =
+                        index_doc.get_document("collation").ok().cloned()
+                    {
+                        let expanded = expanded_collation(
+                            db,
+                            CollConf::collection_name(),
+                            &declared_collation,
+                        )
+                        .await?;
+                        apply_expanded_collation(&mut index_doc, expanded);
+                    }
 
                     // We compare the text index here, the keys become weights of 1 after saving in the DB. Custom weights not supported yet.
                     if let Some(Bson::Document(mut keys_to_set)) = text_index_keys
@@ -534,94 +547,54 @@ struct Cursor {
     pub first_batch: Vec<Document>,
 }
 
-/// The value `MongoDB` applies to a collation field that was not declared.
+/// Asks the server how it would expand a declared collation.
 ///
-/// `None` for fields the server owns outright (`version`) and for anything unrecognized, so a
-/// field added by a future server release is ignored rather than forcing a rebuild forever.
+/// `MongoDB` fills in every ICU field plus a `version` of its own when it stores a collation, and
+/// which values it picks depends on the locale: `fr_CA` defaults `backwards` to true, `da` defaults
+/// `caseFirst` to `upper`, `th` and `vi` default `normalization` to true. A local table of defaults
+/// is wrong for every locale it does not list, so the server is asked instead — `explain` reports
+/// the very expansion it would store.
 ///
-/// [Mongo manual](https://www.mongodb.com/docs/manual/reference/collation/)
-fn default_collation_value(field: &str) -> Option<Bson> {
-    let value = match field {
-        "caseLevel" => Bson::Boolean(false),
-        "caseFirst" => Bson::String("off".to_owned()),
-        "strength" => Bson::Int32(3),
-        "numericOrdering" => Bson::Boolean(false),
-        "alternate" => Bson::String("non-ignorable".to_owned()),
-        "maxVariable" => Bson::String("punct".to_owned()),
-        "normalization" => Bson::Boolean(false),
-        "backwards" => Bson::Boolean(false),
-        _ => return None,
-    };
+/// `None` means the server reports no collation, which is how it answers `locale: "simple"`: that
+/// request is stored as an index carrying no collation at all.
+async fn expanded_collation(
+    db: &Database,
+    collection: &str,
+    collation: &Document,
+) -> Result<Option<Document>, mongodb::error::Error> {
+    let ret = h_run_command(
+        db,
+        doc! {
+            "explain": { "find": collection, "filter": {}, "collation": collation },
+            "verbosity": "queryPlanner",
+        },
+    )
+    .await?;
 
-    Some(value)
+    Ok(ret
+        .get_document("queryPlanner")
+        .ok()
+        .and_then(|planner| planner.get_document("collation").ok().cloned()))
 }
 
-/// The locale asking for plain binary comparison, which `MongoDB` records by storing no collation.
-const SIMPLE_LOCALE: &str = "simple";
-
-/// Rewrites an integer to a single `BSON` variant so collation values compare by number.
+/// Replaces the declared collation with the server's expansion of it so the two can be compared.
 ///
-/// `strength` is the one numeric collation field, and `doc!` picks the variant from how the caller
-/// wrote the value, so a declared `2i64` would otherwise never equal the `Int32` the server reports.
-/// Values too large for an `i32` are left alone; no collation field has such a value.
-fn canonicalize_collation_number(value: &Bson) -> Bson {
-    match value {
-        Bson::Int64(number) => i32::try_from(*number).map_or_else(|_| value.clone(), Bson::Int32),
-        other => other.clone(),
+/// Both sides then hold a document the server itself produced, which is the only way the comparison
+/// can work: a declaration of `{"locale": "en", "strength": 2}` can never equal the ten fields
+/// `listIndexes` reports, so without this `sync_indexes` drops and recreates the index on every run.
+/// Any real change to the declaration expands differently and is still caught.
+///
+/// `None` drops the key, matching an index the server chose to store without a collation. Taking the
+/// expansion as an argument rather than fetching it keeps this half testable without a server.
+fn apply_expanded_collation(declared: &mut Document, expanded: Option<Document>) {
+    match expanded {
+        Some(collation) => {
+            declared.insert("collation", collation);
+        }
+        None => {
+            declared.remove("collation");
+        }
     }
-}
-
-/// Brings the declared and stored collations into a form that can be compared.
-///
-/// `MongoDB` expands a collation when it creates the index, returning every ICU field plus a
-/// `version` of its own, so a stored collation never looks like the one that was declared and
-/// `doc_are_eq` would report the index as changed on every sync. Declaring the expanded form is
-/// not an option either, since `version` is chosen by the server.
-///
-/// A field the server merely filled in with its own default carries no information and is dropped.
-/// A field holding anything other than that default is kept, so it still compares unequal: dropping
-/// `strength: 2` from a declaration leaves the stored index on 2 while the declaration now means the
-/// default of 3, which has to rebuild. Declared fields are always kept, so a change to one is caught
-/// the usual way, and adding or removing the collation entirely shows up as a key difference.
-///
-/// A declared `locale: "simple"` is dropped outright, because the server answers that request by
-/// storing no collation at all and the declaration has to compare against what it kept.
-fn normalize_collations(declared: &mut Document, existing: &mut Document) {
-    if declared.get_document("collation").is_ok_and(|collation| {
-        collation
-            .get_str("locale")
-            .is_ok_and(|locale| locale == SIMPLE_LOCALE)
-    }) {
-        declared.remove("collation");
-    }
-
-    let (Some(declared_collation), Some(existing_collation)) = (
-        declared.get_document("collation").ok().cloned(),
-        existing.get_document("collation").ok().cloned(),
-    ) else {
-        return;
-    };
-
-    let normalized = existing_collation
-        .iter()
-        .filter(|(field, stored)| {
-            if declared_collation.contains_key(field.as_str()) {
-                return true;
-            }
-
-            default_collation_value(field)
-                .is_some_and(|default| canonicalize_collation_number(stored) != default)
-        })
-        .map(|(field, stored)| (field.clone(), canonicalize_collation_number(stored)))
-        .collect::<Document>();
-
-    let canonical_declaration = declared_collation
-        .iter()
-        .map(|(field, value)| (field.clone(), canonicalize_collation_number(value)))
-        .collect::<Document>();
-
-    declared.insert("collation", canonical_declaration);
-    existing.insert("collation", normalized);
 }
 
 fn doc_are_eq(a: &Document, b: &Document) -> bool {
@@ -680,208 +653,144 @@ mod tests {
         );
     }
 
-    /// The `listIndexes` entry `MongoDB` returns for a collated index, after `sync_indexes` has
-    /// stripped `ns` and `v`. Captured from `MongoDB` 7 with ICU 57.1; the `version` value varies by
-    /// build, which is exactly why it cannot be declared. `strength` is a parameter because it is
-    /// the one field whose default (3) differs from what these tests usually declare (2).
-    fn stored_collated_index(strength: i32) -> Document {
+    /// Expansions captured from `MongoDB` 7 with ICU 57.1. `en` is the plain case; the rest are
+    /// locales whose defaults differ from it, which is why the expansion has to come from the server
+    /// rather than a table: `fr_CA` flips `backwards`, `da` sets `caseFirst` to `upper`, `th` sets
+    /// both `alternate` to `shifted` and `normalization` to true.
+    fn server_expansion(locale: &str) -> Document {
+        let (case_first, alternate, normalization, backwards) = match locale {
+            "fr_CA" => ("off", "non-ignorable", false, true),
+            "da" => ("upper", "non-ignorable", false, false),
+            "th" => ("off", "shifted", true, false),
+            _ => ("off", "non-ignorable", false, false),
+        };
+
         doc! {
-            "key": { "field": 1 },
-            "name": "collated_field",
-            "collation": {
-                "locale": "en",
-                "caseLevel": false,
-                "caseFirst": "off",
-                "strength": strength,
-                "numericOrdering": false,
-                "alternate": "non-ignorable",
-                "maxVariable": "punct",
-                "normalization": false,
-                "backwards": false,
-                "version": "57.1",
-            },
+            "locale": locale,
+            "caseLevel": false,
+            "caseFirst": case_first,
+            "strength": 3,
+            "numericOrdering": false,
+            "alternate": alternate,
+            "maxVariable": "punct",
+            "normalization": normalization,
+            "backwards": backwards,
+            "version": "57.1",
         }
     }
 
-    fn declared_collated_index(collation: Document) -> Document {
+    fn stored_index(collation: Option<Document>) -> Document {
+        let mut index = doc! { "key": { "field": 1 }, "name": "collated_field" };
+        if let Some(collation) = collation {
+            index.insert("collation", collation);
+        }
+
+        index
+    }
+
+    fn declared_index(collation: Document) -> Document {
         Index::new("field")
             .with_option(IndexOption::Name("collated_field".to_owned()))
             .with_option(IndexOption::Collation(collation))
             .into_document()
     }
 
-    /// Without this, `sync_indexes` reports the index as changed on every run and rebuilds it: an
-    /// index rebuild on every process start, a window on each start where the collection is
-    /// unindexed, and no way for a caller to declare a collated index that ever settles.
+    /// The whole point: a declaration the server expanded has to compare equal to what it stored, or
+    /// `sync_indexes` drops and recreates the index on every run.
     #[test]
-    fn declared_collation_matches_the_expanded_one_the_server_stored() {
-        let mut declared = declared_collated_index(doc! { "locale": "en", "strength": 2 });
-        let mut stored = stored_collated_index(2);
+    fn an_expanded_declaration_matches_the_stored_index() {
+        let mut declared = declared_index(doc! { "locale": "en", "strength": 2 });
 
-        normalize_collations(&mut declared, &mut stored);
+        apply_expanded_collation(&mut declared, Some(server_expansion("en")));
 
         assert!(
-            doc_are_eq(&declared, &stored),
-            "declared {declared:?} should match the index it created, but got {stored:?}"
+            doc_are_eq(&declared, &stored_index(Some(server_expansion("en")))),
+            "expanded declaration {declared:?} should match the stored index"
         );
     }
 
-    /// A field left out of the declaration is only noise when the server filled it in with the same
-    /// default it would apply next time.
+    /// The locales a hard-coded default table gets wrong. Nothing here is locale-aware any more, so
+    /// these pass for the same reason `en` does — worth pinning so nobody reintroduces a table.
     #[test]
-    fn undeclared_fields_holding_the_server_default_are_ignored() {
-        let mut declared = declared_collated_index(doc! { "locale": "en" });
-        let mut stored = stored_collated_index(3);
+    fn locales_with_unusual_defaults_match_their_stored_index() {
+        for locale in ["fr_CA", "da", "th"] {
+            let mut declared = declared_index(doc! { "locale": locale });
 
-        normalize_collations(&mut declared, &mut stored);
+            apply_expanded_collation(&mut declared, Some(server_expansion(locale)));
+
+            assert!(
+                doc_are_eq(&declared, &stored_index(Some(server_expansion(locale)))),
+                "locale `{locale}` should match its stored index, got {declared:?}"
+            );
+        }
+    }
+
+    /// `locale: "simple"` is stored as an index with no collation, and the server reports no
+    /// expansion for it, so the declaration has to lose the key too.
+    #[test]
+    fn no_expansion_drops_the_declared_collation() {
+        let mut declared = declared_index(doc! { "locale": "simple" });
+
+        apply_expanded_collation(&mut declared, None);
 
         assert!(
-            doc_are_eq(&declared, &stored),
-            "a bare locale should match an index the server filled in with defaults, got {stored:?}"
+            !declared.contains_key("collation"),
+            "the collation should have been dropped, got {declared:?}"
+        );
+        assert!(
+            doc_are_eq(&declared, &stored_index(None)),
+            "a simple-locale declaration should match a collation-less index, got {declared:?}"
         );
     }
 
-    /// The counterpart, and the case a plain declared-keys filter gets wrong: dropping `strength: 2`
-    /// from the declaration leaves the stored index on 2, while the declaration now asks for the
-    /// default of 3. Undeclared is not the same as unchanged.
+    /// A declaration that really did change expands differently and still has to rebuild — including
+    /// the case that a plain declared-keys filter got wrong, where a field is dropped from the
+    /// declaration and the stored index keeps a non-default value for it.
     #[test]
-    fn removing_a_non_default_collation_field_is_still_detected() {
-        let mut declared = declared_collated_index(doc! { "locale": "en" });
-        let mut stored = stored_collated_index(2);
+    fn a_changed_declaration_is_still_detected() {
+        let cases = [
+            ("strength", doc! { "locale": "en", "strength": 2 }),
+            ("locale", doc! { "locale": "fr_CA" }),
+            ("dropped strength", doc! { "locale": "en" }),
+        ];
 
-        normalize_collations(&mut declared, &mut stored);
+        for (what, declaration) in cases {
+            let mut declared = declared_index(declaration);
+            let stored = stored_index(Some({
+                let mut collation = server_expansion("en");
+                collation.insert("strength", 2);
+                collation
+            }));
 
-        assert!(
-            !doc_are_eq(&declared, &stored),
-            "a stored strength of 2 against a declaration that now means 3 should have been detected"
-        );
-    }
+            // The server expands whatever was declared; for these it is not what is stored.
+            let expanded = match declared
+                .get_document("collation")
+                .unwrap()
+                .get_str("locale")
+            {
+                Ok("fr_CA") => server_expansion("fr_CA"),
+                _ => {
+                    let mut collation = server_expansion("en");
+                    if declared
+                        .get_document("collation")
+                        .unwrap()
+                        .contains_key("strength")
+                    {
+                        collation.insert("strength", 2);
+                    }
+                    collation
+                }
+            };
 
-    /// A field that was declared and then changed has to keep rebuilding the index, or a collation
-    /// edit would never take effect.
-    #[test]
-    fn changing_a_declared_collation_field_is_still_detected() {
-        let mut declared = declared_collated_index(doc! { "locale": "en", "strength": 3 });
-        let mut stored = stored_collated_index(2);
+            apply_expanded_collation(&mut declared, Some(expanded));
 
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            !doc_are_eq(&declared, &stored),
-            "strength 3 was declared against a stored strength of 2 and should have been detected"
-        );
-    }
-
-    #[test]
-    fn adding_a_declared_collation_field_is_still_detected() {
-        let mut declared =
-            declared_collated_index(doc! { "locale": "en", "strength": 2, "backwards": true });
-        let mut stored = stored_collated_index(2);
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            !doc_are_eq(&declared, &stored),
-            "a newly declared `backwards` should have been detected"
-        );
-    }
-
-    #[test]
-    fn removing_the_collation_entirely_is_still_detected() {
-        let mut declared = Index::new("field")
-            .with_option(IndexOption::Name("collated_field".to_owned()))
-            .into_document();
-        let mut stored = stored_collated_index(2);
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            !doc_are_eq(&declared, &stored),
-            "dropping the collation from the declaration should have been detected"
-        );
-    }
-
-    /// `MongoDB` answers a request for the simple locale by storing no collation at all, so the
-    /// declaration has to compare against a collation-less index or it rebuilds on every sync.
-    #[test]
-    fn a_simple_locale_declaration_matches_an_index_with_no_collation() {
-        let mut declared = declared_collated_index(doc! { "locale": "simple" });
-        let mut stored = doc! { "key": { "field": 1 }, "name": "collated_field" };
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            doc_are_eq(&declared, &stored),
-            "a simple-locale declaration should match the collation-less index the server stored, \
-             got declared {declared:?} against {stored:?}"
-        );
-    }
-
-    /// The counterpart: moving an existing collated index to the simple locale is a real change.
-    #[test]
-    fn switching_a_declaration_to_the_simple_locale_is_still_detected() {
-        let mut declared = declared_collated_index(doc! { "locale": "simple" });
-        let mut stored = stored_collated_index(2);
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            !doc_are_eq(&declared, &stored),
-            "dropping to the simple locale from a stored `en` collation should have been detected"
-        );
-    }
-
-    /// `doc!` picks the `BSON` variant from how the value was written, so a caller passing an `i64`
-    /// must still match the `Int32` the server reports rather than rebuilding forever.
-    #[test]
-    fn an_i64_strength_matches_the_int32_the_server_stored() {
-        let mut declared = declared_collated_index(doc! { "locale": "en", "strength": 2i64 });
-        let mut stored = stored_collated_index(2);
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            doc_are_eq(&declared, &stored),
-            "an i64 strength should match a stored Int32 of the same value, got {declared:?}"
-        );
-    }
-
-    /// The same canonicalization has to apply to the default comparison, or a server reporting
-    /// `strength` as an `i64` would leave it looking non-default and rebuild on every sync.
-    #[test]
-    fn an_undeclared_i64_default_strength_is_ignored() {
-        let mut declared = declared_collated_index(doc! { "locale": "en" });
-        let mut stored = stored_collated_index(3);
-        stored
-            .get_document_mut("collation")
-            .unwrap()
-            .insert("strength", 3i64);
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            doc_are_eq(&declared, &stored),
-            "an i64 strength holding the server default should have been ignored, got {stored:?}"
-        );
-    }
-
-    /// A field the server adds in some future release has no known default, and must be ignored
-    /// rather than retained — otherwise it would reintroduce the rebuild-on-every-sync behaviour
-    /// this all exists to prevent.
-    #[test]
-    fn unrecognized_server_fields_are_ignored() {
-        let mut declared = declared_collated_index(doc! { "locale": "en", "strength": 2 });
-        let mut stored = stored_collated_index(2);
-        stored
-            .get_document_mut("collation")
-            .unwrap()
-            .insert("someFutureIcuField", "whatever");
-
-        normalize_collations(&mut declared, &mut stored);
-
-        assert!(
-            doc_are_eq(&declared, &stored),
-            "an unknown server-supplied field should have been ignored, got {stored:?}"
-        );
+            let converged = doc_are_eq(&declared, &stored);
+            assert_eq!(
+                converged,
+                what == "strength",
+                "`{what}`: expected converged={}, got {converged} for {declared:?}",
+                what == "strength"
+            );
+        }
     }
 }

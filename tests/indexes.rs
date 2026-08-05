@@ -201,6 +201,41 @@ impl CollectionConfig for CollatedExpansionCollConf {
     }
 }
 
+// Locales whose server-side defaults differ from `en`: fr_CA flips `backwards`, da sets `caseFirst`
+// to "upper", th sets `alternate` to "shifted" and `normalization` to true. Any implementation that
+// guesses defaults from a table rather than asking the server rebuilds these on every sync.
+struct FrenchCanadianCollConf;
+
+impl CollectionConfig for FrenchCanadianCollConf {
+    fn collection_name() -> &'static str {
+        "collated_fr_ca"
+    }
+
+    fn indexes() -> Indexes {
+        Indexes::new().with(
+            Index::new("field")
+                .with_option(IndexOption::Name("fr_ca_collated".to_owned()))
+                .with_option(IndexOption::Collation(doc! { "locale": "fr_CA" })),
+        )
+    }
+}
+
+struct ThaiCollConf;
+
+impl CollectionConfig for ThaiCollConf {
+    fn collection_name() -> &'static str {
+        "collated_th"
+    }
+
+    fn indexes() -> Indexes {
+        Indexes::new().with(
+            Index::new("field")
+                .with_option(IndexOption::Name("th_collated".to_owned()))
+                .with_option(IndexOption::Collation(doc! { "locale": "th" })),
+        )
+    }
+}
+
 /// `accesses.since` is the point from which MongoDB gathered statistics for an index, so it is
 /// reset by a recreate and left alone by a genuine no-op.
 async fn index_stats_since(
@@ -359,5 +394,56 @@ async fn a_simple_locale_index_is_not_rebuilt_on_every_sync() {
     assert_eq!(
         after_create, after_second_sync,
         "the simple-locale index was dropped and recreated by a sync that should have been a no-op"
+    );
+}
+
+/// `fr_CA` expands with `backwards: true`, unlike `en`. A table of defaults would call the stored
+/// index changed and rebuild it on every sync, so this pins the comparison's locale-independence.
+#[tokio::test]
+#[ignore]
+async fn a_french_canadian_index_is_not_rebuilt_on_every_sync() {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
+
+    let collection = FrenchCanadianCollConf::collection_name();
+    db.collection::<Document>(collection).drop().await.unwrap();
+
+    sync_indexes::<FrenchCanadianCollConf>(&db).await.unwrap();
+    let after_create = index_stats_since(&db, collection, "fr_ca_collated").await;
+
+    sync_indexes::<FrenchCanadianCollConf>(&db).await.unwrap();
+    let after_second_sync = index_stats_since(&db, collection, "fr_ca_collated").await;
+
+    assert_eq!(
+        after_create, after_second_sync,
+        "the fr_CA index was dropped and recreated by a sync that should have been a no-op"
+    );
+}
+
+/// `th` expands with `alternate: "shifted"` and `normalization: true`, two more deviations from `en`.
+#[tokio::test]
+#[ignore]
+async fn a_thai_index_is_not_rebuilt_on_every_sync() {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
+
+    let collection = ThaiCollConf::collection_name();
+    db.collection::<Document>(collection).drop().await.unwrap();
+
+    sync_indexes::<ThaiCollConf>(&db).await.unwrap();
+    let after_create = index_stats_since(&db, collection, "th_collated").await;
+
+    sync_indexes::<ThaiCollConf>(&db).await.unwrap();
+    let after_second_sync = index_stats_since(&db, collection, "th_collated").await;
+
+    assert_eq!(
+        after_create, after_second_sync,
+        "the th index was dropped and recreated by a sync that should have been a no-op"
     );
 }
