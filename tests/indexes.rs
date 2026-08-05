@@ -173,6 +173,22 @@ impl CollectionConfig for CollatedSyncCollConf {
     }
 }
 
+struct SimpleLocaleCollConf;
+
+impl CollectionConfig for SimpleLocaleCollConf {
+    fn collection_name() -> &'static str {
+        "collated_simple_locale"
+    }
+
+    fn indexes() -> Indexes {
+        Indexes::new().with(
+            Index::new("field")
+                .with_option(IndexOption::Name("simple_collated".to_owned()))
+                .with_option(IndexOption::Collation(doc! { "locale": "simple" })),
+        )
+    }
+}
+
 struct CollatedExpansionCollConf;
 
 impl CollectionConfig for CollatedExpansionCollConf {
@@ -200,7 +216,7 @@ async fn index_stats_since(
 
     while cursor.advance().await.unwrap() {
         let stats = cursor.deserialize_current().unwrap();
-        if stats.get_str("name") == Ok(index_name) {
+        if stats.get_str("name").is_ok_and(|name| name == index_name) {
             return stats
                 .get_document("accesses")
                 .unwrap()
@@ -246,7 +262,11 @@ async fn listindexes_returns_more_collation_fields_than_were_declared() {
         .unwrap()
         .iter()
         .filter_map(|index| index.as_document())
-        .find(|index| index.get_str("name") == Ok("collated_field"))
+        .find(|index| {
+            index
+                .get_str("name")
+                .is_ok_and(|name| name == "collated_field")
+        })
         .expect("the collated index should have been created")
         .clone();
 
@@ -288,5 +308,56 @@ async fn collated_index_is_not_rebuilt_on_every_sync() {
     assert_eq!(
         after_create, after_second_sync,
         "the collated index was dropped and recreated by a sync that should have been a no-op"
+    );
+}
+
+/// `locale: "simple"` asks for binary comparison, which MongoDB records by storing no collation on
+/// the index at all. Pinned against a real server because it is the server's behaviour, not ours,
+/// that makes the declaration and the stored index disagree.
+#[tokio::test]
+#[ignore]
+async fn a_simple_locale_index_is_not_rebuilt_on_every_sync() {
+    let client_options = ClientOptions::parse("mongodb://localhost:27017")
+        .await
+        .unwrap();
+    let client = Client::with_options(client_options).unwrap();
+    let db = client.database("rust_mongo_orm_tests");
+
+    let collection = SimpleLocaleCollConf::collection_name();
+    db.collection::<Document>(collection).drop().await.unwrap();
+
+    sync_indexes::<SimpleLocaleCollConf>(&db).await.unwrap();
+
+    let ret = db
+        .run_command(doc! { "listIndexes": collection })
+        .await
+        .unwrap();
+    let stored = ret
+        .get_document("cursor")
+        .unwrap()
+        .get_array("firstBatch")
+        .unwrap()
+        .iter()
+        .filter_map(|index| index.as_document())
+        .find(|index| {
+            index
+                .get_str("name")
+                .is_ok_and(|name| name == "simple_collated")
+        })
+        .expect("the index should have been created")
+        .clone();
+
+    assert!(
+        !stored.contains_key("collation"),
+        "the simple locale should be stored as no collation at all; got {stored:?}"
+    );
+
+    let after_create = index_stats_since(&db, collection, "simple_collated").await;
+    sync_indexes::<SimpleLocaleCollConf>(&db).await.unwrap();
+    let after_second_sync = index_stats_since(&db, collection, "simple_collated").await;
+
+    assert_eq!(
+        after_create, after_second_sync,
+        "the simple-locale index was dropped and recreated by a sync that should have been a no-op"
     );
 }
