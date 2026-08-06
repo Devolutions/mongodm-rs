@@ -99,9 +99,6 @@ jobs:
       - integration-tests
 
     steps:
-      - name: Check required job results
-        if: ${{ always() }}
-        run: |
-          test "${{ needs.formatting.result }}" = "success"
-          test "${{ needs.checks.result }}" = "success"
-          test "${{ needs.integration-tests.result }}" = "success"
+      - name: CI failed
+        if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')) }}
+        run: exit 1
