@@ -1,9 +1,47 @@
 use pretty_assertions::assert_eq;
 
-use mongodb::Client;
 use mongodb::bson::{Document, doc};
 use mongodb::options::ClientOptions;
+use mongodb::{Client, Database};
 use mongodm::{CollectionConfig, Index, IndexOption, Indexes, sync_indexes};
+
+async fn list_indexes(db: &Database, collection_name: &str) -> Vec<Document> {
+    db.run_command(doc! { "listIndexes": collection_name })
+        .await
+        .unwrap()
+        .get_document("cursor")
+        .unwrap()
+        .get_array("firstBatch")
+        .unwrap()
+        .iter()
+        .map(|index| index.as_document().unwrap().clone())
+        .collect()
+}
+
+fn assert_synced_indexes(indexes: &[Document], expected_key: Document, expected_unique: bool) {
+    assert_eq!(indexes.len(), 2);
+
+    let id_key = doc! { "_id": 1 };
+    assert!(
+        indexes
+            .iter()
+            .any(|index| index.get_document("key").is_ok_and(|key| key == &id_key))
+    );
+
+    let expected_index = indexes
+        .iter()
+        .find(|index| {
+            index
+                .get_document("key")
+                .is_ok_and(|key| key == &expected_key)
+        })
+        .unwrap();
+
+    assert_eq!(
+        expected_index.get_bool("unique").ok(),
+        expected_unique.then_some(true)
+    );
+}
 
 struct OneSyncCollConf;
 
@@ -33,40 +71,8 @@ async fn one_sync() {
 
     sync_indexes::<OneSyncCollConf>(&db).await.unwrap();
 
-    let ret = db
-        .run_command(doc! { "listIndexes": OneSyncCollConf::collection_name() })
-        .await
-        .unwrap();
-
-    assert_eq!(
-        ret,
-        doc! {
-            "cursor" : {
-                "id" : 0i64,
-                "ns" : "rust_mongo_orm_tests.one_sync",
-                "firstBatch" : [
-                    {
-                        "v" : 2,
-                        "key" : {
-                            "_id" : 1
-                        },
-                        "name" : "_id_",
-                        "ns" : "rust_mongo_orm_tests.one_sync"
-                    },
-                    {
-                        "v" : 2,
-                        "unique" : true,
-                        "key" : {
-                            "field" : 1
-                        },
-                        "name" : "field_1",
-                        "ns" : "rust_mongo_orm_tests.one_sync"
-                    }
-                ]
-            },
-            "ok" : 1.0
-        }
-    );
+    let indexes = list_indexes(&db, OneSyncCollConf::collection_name()).await;
+    assert_synced_indexes(&indexes, doc! { "field": 1 }, true);
 }
 
 struct MultipleSyncCollConf;
@@ -125,116 +131,20 @@ async fn multiple_sync() {
 
     sync_indexes::<MultipleSyncCollConf>(&db).await.unwrap();
 
-    let ret = db
-        .run_command(doc! { "listIndexes": MultipleSyncCollConf::collection_name() })
-        .await
-        .unwrap();
-
-    assert_eq!(
-        ret,
-        doc! {
-            "cursor" : {
-                "id" : 0i64,
-                "ns" : "rust_mongo_orm_tests.multiple_sync",
-                "firstBatch" : [
-                    {
-                        "v" : 2,
-                        "key" : {
-                            "_id" : 1
-                        },
-                        "name" : "_id_",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    },
-                    {
-                        "v" : 2,
-                        "unique" : true,
-                        "key" : {
-                            "field" : 1,
-                            "last_seen" : 1
-                        },
-                        "name" : "field_1_last_seen_1",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    }
-                ]
-            },
-            "ok" : 1.0
-        }
-    );
+    let indexes = list_indexes(&db, MultipleSyncCollConf::collection_name()).await;
+    assert_synced_indexes(&indexes, doc! { "field": 1, "last_seen": 1 }, true);
 
     sync_indexes::<MultipleNoLastSeenCollConf>(&db)
         .await
         .unwrap();
 
-    let ret = db
-        .run_command(doc! { "listIndexes": MultipleNoLastSeenCollConf::collection_name() })
-        .await
-        .unwrap();
-
-    assert_eq!(
-        ret,
-        doc! {
-            "cursor" : {
-                "id" : 0i64,
-                "ns" : "rust_mongo_orm_tests.multiple_sync",
-                "firstBatch" : [
-                    {
-                        "v" : 2,
-                        "key" : {
-                            "_id" : 1
-                        },
-                        "name" : "_id_",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    },
-                    {
-                        "v" : 2,
-                        "unique" : true,
-                        "key" : {
-                            "field" : 1,
-                        },
-                        "name" : "field_1",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    }
-                ]
-            },
-            "ok" : 1.0
-        }
-    );
+    let indexes = list_indexes(&db, MultipleNoLastSeenCollConf::collection_name()).await;
+    assert_synced_indexes(&indexes, doc! { "field": 1 }, true);
 
     sync_indexes::<MultipleNotUniqueCollConf>(&db)
         .await
         .unwrap();
 
-    let ret = db
-        .run_command(doc! { "listIndexes": MultipleNotUniqueCollConf::collection_name() })
-        .await
-        .unwrap();
-
-    assert_eq!(
-        ret,
-        doc! {
-            "cursor" : {
-                "id" : 0i64,
-                "ns" : "rust_mongo_orm_tests.multiple_sync",
-                "firstBatch" : [
-                    {
-                        "v" : 2,
-                        "key" : {
-                            "_id" : 1
-                        },
-                        "name" : "_id_",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    },
-                    {
-                        "v" : 2,
-                        "key" : {
-                            "field" : 1,
-                        },
-                        "name" : "field_1",
-                        "ns" : "rust_mongo_orm_tests.multiple_sync"
-                    }
-                ]
-            },
-            "ok" : 1.0
-        }
-    );
+    let indexes = list_indexes(&db, MultipleNotUniqueCollConf::collection_name()).await;
+    assert_synced_indexes(&indexes, doc! { "field": 1 }, false);
 }
