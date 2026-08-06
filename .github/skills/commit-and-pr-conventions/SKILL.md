@@ -10,15 +10,23 @@ Treat the PR title and initial body as the exact commit message that will land t
 ## Commit message
 
 - Follow Conventional Commits: `<type>[optional scope][!]: <description>`.
-- Keep the summary concise and describe the resulting behavior.
-- Put the ticket key in a footer, not the summary: `Issue: HB-8770`.
-- Include a body when the motivation or behavior is not obvious.
+- Limit the subject to 50 characters and describe the resulting behavior.
+- Separate the subject, body, and footers with blank lines.
+- Wrap body lines at 72 characters. Explain why the change was needed, how
+  it solves the problem, and any side effects.
+- Put the ticket key or link in a footer, not the subject: `Issue: HB-8770`.
+- Add `Co-authored-by: Name <email>` trailers for collaborators and include
+  other applicable Conventional Commit footers.
+- Use `fix` for bugs, `feat` for features, `build` for build/dependencies,
+  `chore` for non-product tools/configuration, `ci` for automation, `docs`
+  for documentation only, `style` for non-semantic edits, `refactor` for
+  restructuring, `test` for tests, and `perf` for performance.
 - Keep each non-squashed development commit coherent and conventional too.
 
 Example:
 
 ```text
-fix: stop rebuilding collated indexes on every sync_indexes call
+fix: preserve unchanged collated indexes
 
 Normalize server-expanded collations before comparing index definitions.
 
