@@ -64,6 +64,31 @@ jobs:
       - name: Tests
         run: cargo test --workspace -v
 
+  integration-tests:
+    name: MongoDB integration tests
+    runs-on: ubuntu-22.04
+    needs: formatting
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Integration tests
+        run: cargo test --workspace --tests -v -- --ignored --test-threads=1
+
   success:
     name: Success
     runs-on: ubuntu-latest
@@ -71,13 +96,9 @@ jobs:
     needs:
       - formatting
       - checks
+      - integration-tests
 
     steps:
-      - name: CI succeeded
-        id: succeeded
-        if: ${{ !contains(needs.*.result, 'failure') }}
-        run: exit 0
-
       - name: CI failed
-        if: ${{ steps.succeeded.outcome == 'skipped' }}
+        if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')) }}
         run: exit 1
