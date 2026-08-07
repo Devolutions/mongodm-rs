@@ -455,7 +455,7 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                         continue;
                     }
 
-                    if doc_are_eq(&index_doc, &existing_index) {
+                    if index_docs_are_eq(&index_doc, &existing_index) {
                         already_sync.push(i);
                     } else {
                         // An index with the same specification already exists, we need to drop it.
@@ -695,14 +695,22 @@ fn apply_expanded_collation(declared: &mut Document, expanded: Option<Document>)
     }
 }
 
-fn doc_are_eq(a: &Document, b: &Document) -> bool {
+fn index_docs_are_eq(a: &Document, b: &Document) -> bool {
     if a.len() != b.len() {
         return false;
     }
 
     for (key, a_val) in a {
         match b.get(key) {
-            Some(b_val) if !bson_are_eq(a_val, b_val) => {
+            Some(Bson::Document(b_val)) if key == "collation" => {
+                let Bson::Document(a_val) = a_val else {
+                    return false;
+                };
+                if !collation_docs_are_eq(a_val, b_val) {
+                    return false;
+                }
+            }
+            Some(b_val) if !ordered_bson_are_eq(a_val, b_val) => {
                 return false;
             }
             Some(_) => {}
@@ -715,11 +723,42 @@ fn doc_are_eq(a: &Document, b: &Document) -> bool {
     true
 }
 
-fn bson_are_eq(a: &Bson, b: &Bson) -> bool {
+fn collation_docs_are_eq(a: &Document, b: &Document) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    for (key, a_val) in a {
+        match b.get(key) {
+            Some(b_val) if !collation_bson_are_eq(a_val, b_val) => return false,
+            Some(_) => {}
+            None => return false,
+        }
+    }
+
+    true
+}
+
+fn collation_bson_are_eq(a: &Bson, b: &Bson) -> bool {
     match (a, b) {
-        (Bson::Document(a), Bson::Document(b)) => doc_are_eq(a, b),
+        (Bson::Document(a), Bson::Document(b)) => collation_docs_are_eq(a, b),
         (Bson::Array(a), Bson::Array(b)) => {
-            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| bson_are_eq(a, b))
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| collation_bson_are_eq(a, b))
+        }
+        _ => a == b,
+    }
+}
+
+fn ordered_bson_are_eq(a: &Bson, b: &Bson) -> bool {
+    match (a, b) {
+        (Bson::Document(a), Bson::Document(b)) => {
+            a.len() == b.len()
+                && a.iter().zip(b).all(|((a_key, a_value), (b_key, b_value))| {
+                    a_key == b_key && ordered_bson_are_eq(a_value, b_value)
+                })
+        }
+        (Bson::Array(a), Bson::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| ordered_bson_are_eq(a, b))
         }
         _ => a == b,
     }
@@ -965,7 +1004,7 @@ mod tests {
             CollationExpansion::UnrecognizedExplainShape
         ));
         assert!(
-            !doc_are_eq(&declared, &stored),
+            !index_docs_are_eq(&declared, &stored),
             "the raw declaration must differ from the stored expansion"
         );
     }
@@ -980,7 +1019,7 @@ mod tests {
         apply_expanded_collation(&mut declared, Some(expansion("en", 2)));
 
         assert!(
-            doc_are_eq(&declared, &stored_index(Some(expansion("en", 2)))),
+            index_docs_are_eq(&declared, &stored_index(Some(expansion("en", 2)))),
             "expanded declaration {declared:?} should match the stored index"
         );
     }
@@ -998,13 +1037,13 @@ mod tests {
             "the collation should have been dropped, got {declared:?}"
         );
         assert!(
-            doc_are_eq(&declared, &stored_index(None)),
+            index_docs_are_eq(&declared, &stored_index(None)),
             "a simple-locale declaration should match a collation-less index, got {declared:?}"
         );
     }
 
     #[test]
-    fn documents_are_equal_regardless_of_nested_field_order() {
+    fn collations_are_equal_regardless_of_field_order() {
         let a = doc! {
             "key": { "field": 1 },
             "collation": { "locale": "en", "strength": 2 },
@@ -1014,7 +1053,21 @@ mod tests {
             "key": { "field": 1 },
         };
 
-        assert!(doc_are_eq(&a, &b));
+        assert!(index_docs_are_eq(&a, &b));
+    }
+
+    #[test]
+    fn ordered_non_collation_documents_are_detected_as_changes() {
+        let a = doc! {
+            "key": { "field": 1 },
+            "partialFilterExpression": { "x": { "a": 1, "b": 2 } },
+        };
+        let b = doc! {
+            "key": { "field": 1 },
+            "partialFilterExpression": { "x": { "b": 2, "a": 1 } },
+        };
+
+        assert!(!index_docs_are_eq(&a, &b));
     }
 
     /// Anything the declaration really changed expands differently and still has to rebuild.
@@ -1045,7 +1098,7 @@ mod tests {
             apply_expanded_collation(&mut declared, expanded);
 
             assert!(
-                !doc_are_eq(&declared, &stored_index(stored)),
+                !index_docs_are_eq(&declared, &stored_index(stored)),
                 "`{what}` should have been detected as a change, got {declared:?}"
             );
         }
