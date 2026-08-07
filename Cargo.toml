@@ -1,6 +1,6 @@
 [package]
 name = "mongodm"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Devolutions Inc. <infos@devolutions.net>"]
 edition = "2024"
 description = "A thin ODM layer for mongodb"

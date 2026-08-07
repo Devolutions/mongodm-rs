@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [[0.10.2](https://github.com/Devolutions/mongodm-rs/compare/v0.10.1...v0.10.2)] - 2026-08-07
+
+### <!-- 4 -->Bug Fixes
+
+- Preserve unchanged collated indexes ([#50](https://github.com/Devolutions/mongodm-rs/issues/50)) ([088c9969e2](https://github.com/Devolutions/mongodm-rs/commit/088c9969e2c4ce8f8073c554024500924cff9a77)) 
+
+  Expand declared collations through MongoDB before comparing index
+  definitions, so equivalent collated indexes remain intact across syncs.
+  
+  Fall back safely when expansion is unavailable or unrecognized.
+
+
+
 ## [[0.10.1](https://github.com/Devolutions/mongodm-rs/compare/v0.10.0...v0.10.1)] - 2025-12-16
 
 ### <!-- 1 -->Features
