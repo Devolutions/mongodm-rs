@@ -23,6 +23,9 @@ See [documentation](https://docs.rs/mongodm).
 
 Some tests can be run with `cargo test` however most of the useful tests requires a Mongo database running and exposed on `localhost:27017`.
 These integration tests are run with `cargo test -- --ignored`.
+The authorization fallback test requires an authenticated `MONGODB_URI` with
+user-administration privileges and `MONGODM_RESTRICTED_MONGODB_URI` for its
+restricted user.
 
 #### License
 

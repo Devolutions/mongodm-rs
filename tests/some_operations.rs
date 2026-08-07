@@ -4,6 +4,16 @@ use futures_util::StreamExt;
 use mongodm::prelude::*;
 use serde::{Deserialize, Serialize};
 
+async fn test_db() -> mongodb::Database {
+    let uri =
+        std::env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_owned());
+    let client_options = MongoClientOptions::parse(uri).await.unwrap();
+
+    MongoClient::with_options(client_options)
+        .unwrap()
+        .database("rust_mongo_orm_tests")
+}
+
 struct UserCollConf;
 
 impl CollectionConfig for UserCollConf {
@@ -32,11 +42,7 @@ impl Model for User {
 #[tokio::test]
 #[ignore]
 async fn insert_delete_find() {
-    let client_options = MongoClientOptions::parse("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let client = MongoClient::with_options(client_options).unwrap();
-    let db = client.database("rust_mongo_orm_tests");
+    let db = test_db().await;
 
     let repository = db.repository::<User>();
     repository.drop().await.unwrap();
@@ -114,11 +120,7 @@ async fn insert_delete_find() {
 #[tokio::test]
 #[ignore]
 async fn bulk_updates() {
-    let client_options = MongoClientOptions::parse("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let client = MongoClient::with_options(client_options).unwrap();
-    let db = client.database("rust_mongo_orm_tests");
+    let db = test_db().await;
 
     let repository = db.repository::<User>();
     repository.drop().await.unwrap();
