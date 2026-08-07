@@ -72,10 +72,13 @@ jobs:
     services:
       mongodb:
         image: mongo:7.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: test-password
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-cmd "mongosh --quiet --username root --password test-password --authenticationDatabase admin --eval 'db.runCommand({ ping: 1 }).ok'"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -87,6 +90,9 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.3
 
       - name: Integration tests
+        env:
+          MONGODB_URI: mongodb://root:test-password@localhost:27017/?authSource=admin
+          MONGODM_RESTRICTED_MONGODB_URI: mongodb://collated_index_manager:password@localhost:27017/?authSource=rust_mongo_orm_tests
         run: cargo test --workspace --tests -v -- --ignored --test-threads=1
 
   success:

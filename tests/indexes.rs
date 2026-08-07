@@ -5,6 +5,10 @@ use mongodb::options::ClientOptions;
 use mongodb::{Client, Database};
 use mongodm::{CollectionConfig, Index, IndexOption, Indexes, sync_indexes};
 
+const TEST_DATABASE: &str = "rust_mongo_orm_tests";
+const RESTRICTED_ROLE: &str = "collated_index_manager";
+const RESTRICTED_USER: &str = "collated_index_manager";
+
 async fn list_indexes(db: &Database, collection_name: &str) -> Vec<Document> {
     db.run_command(doc! { "listIndexes": collection_name })
         .await
@@ -58,11 +62,7 @@ impl CollectionConfig for OneSyncCollConf {
 #[tokio::test]
 #[ignore]
 async fn one_sync() {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let db = client.database("rust_mongo_orm_tests");
+    let db = test_db().await;
 
     db.collection::<Document>(OneSyncCollConf::collection_name())
         .drop()
@@ -149,8 +149,6 @@ async fn multiple_sync() {
     assert_synced_indexes(&indexes, doc! { "field": 1 }, false);
 }
 
-/// Shared so the expansion test can assert the server returned more fields than were declared,
-/// without hard-coding how many that is.
 fn declared_collation() -> Document {
     doc! { "locale": "en", "strength": 2 }
 }
@@ -163,8 +161,6 @@ fn collated_index() -> Indexes {
     )
 }
 
-// A collection per test: libtest runs these concurrently under `--ignored`, and each one drops its
-// collection on the way in.
 struct CollatedSyncCollConf;
 
 impl CollectionConfig for CollatedSyncCollConf {
@@ -193,21 +189,6 @@ impl CollectionConfig for SimpleLocaleCollConf {
     }
 }
 
-struct CollatedExpansionCollConf;
-
-impl CollectionConfig for CollatedExpansionCollConf {
-    fn collection_name() -> &'static str {
-        "collated_expansion"
-    }
-
-    fn indexes() -> Indexes {
-        collated_index()
-    }
-}
-
-// Locales whose server-side defaults differ from `en`: fr_CA flips `backwards`, da sets `caseFirst`
-// to "upper", th sets `alternate` to "shifted" and `normalization` to true. Any implementation that
-// guesses defaults from a table rather than asking the server rebuilds these on every sync.
 struct FrenchCanadianCollConf;
 
 impl CollectionConfig for FrenchCanadianCollConf {
@@ -240,8 +221,6 @@ impl CollectionConfig for ThaiCollConf {
     }
 }
 
-// Three declarations of the same index on one collection: uncollated, then collated, then collated
-// for a different locale. Syncing them in order is two genuine changes, each of which has to rebuild.
 fn changed_index(collation: Option<Document>) -> Indexes {
     let mut index =
         Index::new("field").with_option(IndexOption::Name("changed_collated".to_owned()));
@@ -317,13 +296,55 @@ async fn index_stats_since(
 }
 
 async fn test_db() -> mongodb::Database {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017")
-        .await
-        .unwrap();
+    let uri =
+        std::env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_owned());
+    let client_options = ClientOptions::parse(uri).await.unwrap();
 
     Client::with_options(client_options)
         .unwrap()
-        .database("rust_mongo_orm_tests")
+        .database(TEST_DATABASE)
+}
+
+async fn restricted_test_db() -> mongodb::Database {
+    let uri = std::env::var("MONGODM_RESTRICTED_MONGODB_URI")
+        .expect("the restricted-role integration test requires MONGODM_RESTRICTED_MONGODB_URI");
+    let client_options = ClientOptions::parse(uri).await.unwrap();
+
+    Client::with_options(client_options)
+        .unwrap()
+        .database(TEST_DATABASE)
+}
+
+async fn drop_restricted_user_and_role(db: &mongodb::Database) {
+    let users = db
+        .run_command(doc! {
+            "usersInfo": { "user": RESTRICTED_USER, "db": TEST_DATABASE },
+        })
+        .await
+        .unwrap()
+        .get_array("users")
+        .unwrap()
+        .to_owned();
+    if !users.is_empty() {
+        db.run_command(doc! { "dropUser": RESTRICTED_USER })
+            .await
+            .unwrap();
+    }
+
+    let roles = db
+        .run_command(doc! {
+            "rolesInfo": { "role": RESTRICTED_ROLE, "db": TEST_DATABASE },
+        })
+        .await
+        .unwrap()
+        .get_array("roles")
+        .unwrap()
+        .to_owned();
+    if !roles.is_empty() {
+        db.run_command(doc! { "dropRole": RESTRICTED_ROLE })
+            .await
+            .unwrap();
+    }
 }
 
 /// The `listIndexes` entry for one index, as the server reports it.
@@ -344,12 +365,7 @@ async fn listed_index(db: &mongodb::Database, collection: &str, index_name: &str
         .clone()
 }
 
-/// Syncs from scratch, then syncs again and asserts the index survived the second, no-op call.
-///
-/// `accesses.since` is reset by a recreate, so an unchanged value is what proves the declaration
-/// converged. Each locale below runs the same steps, which is the point — the comparison must not
-/// care which locale it is looking at. Returns the database so a caller can assert further without
-/// opening a second client.
+/// Creates and resyncs an index, asserting that `accesses.since` is unchanged.
 async fn assert_index_survives_a_resync<Conf: CollectionConfig>(
     index_name: &str,
 ) -> mongodb::Database {
@@ -372,44 +388,53 @@ async fn assert_index_survives_a_resync<Conf: CollectionConfig>(
     db
 }
 
-/// Documents the server behaviour the convergence tests rest on, kept apart from them so a failure
-/// says which of the two broke: the server changing how it reports collations, or `sync_indexes`
-/// mishandling what it reports.
 #[tokio::test]
 #[ignore]
-async fn the_server_expands_a_declared_collation() {
-    let db = test_db().await;
-    let collection = CollatedExpansionCollConf::collection_name();
-
-    db.collection::<Document>(collection).drop().await.unwrap();
-    sync_indexes::<CollatedExpansionCollConf>(&db)
-        .await
-        .unwrap();
-
+async fn a_collated_index_converges_with_and_without_find_privilege() {
+    let db = assert_index_survives_a_resync::<CollatedSyncCollConf>("collated_field").await;
+    let collection = CollatedSyncCollConf::collection_name();
     let stored = listed_index(&db, collection, "collated_field").await;
     let collation = stored
         .get_document("collation")
         .expect("a collated index should report its collation");
 
-    assert!(
-        collation.contains_key("version"),
-        "expected a server-supplied ICU version; got {collation:?}"
+    assert!(collation.contains_key("version"));
+    assert!(collation.len() > declared_collation().len());
+
+    drop_restricted_user_and_role(&db).await;
+    db.run_command(doc! {
+        "createRole": RESTRICTED_ROLE,
+        "privileges": [{
+            "resource": { "db": TEST_DATABASE, "collection": collection },
+            "actions": ["listIndexes", "createIndex", "dropIndex"],
+        }],
+        "roles": [],
+    })
+    .await
+    .unwrap();
+    db.run_command(doc! {
+        "createUser": RESTRICTED_USER,
+        "pwd": "password",
+        "roles": [{ "role": RESTRICTED_ROLE, "db": TEST_DATABASE }],
+    })
+    .await
+    .unwrap();
+
+    let before_restricted_sync = index_stats_since(&db, collection, "collated_field").await;
+    let restricted_db = restricted_test_db().await;
+    sync_indexes::<CollatedSyncCollConf>(&restricted_db)
+        .await
+        .unwrap();
+    let after_restricted_sync = index_stats_since(&db, collection, "collated_field").await;
+
+    assert_ne!(
+        before_restricted_sync, after_restricted_sync,
+        "a user without find must recreate the collated index"
     );
-    assert!(
-        collation.len() > declared_collation().len(),
-        "expected the server to expand {} declared fields; got {collation:?}",
-        declared_collation().len()
-    );
+
+    drop_restricted_user_and_role(&db).await;
 }
 
-#[tokio::test]
-#[ignore]
-async fn a_collated_index_survives_a_resync() {
-    assert_index_survives_a_resync::<CollatedSyncCollConf>("collated_field").await;
-}
-
-/// `locale: "simple"` converges only because the server stores no collation for it, which is asserted
-/// here rather than in the expansion test so this collection stays owned by one test.
 #[tokio::test]
 #[ignore]
 async fn a_simple_locale_index_survives_a_resync() {
@@ -428,26 +453,19 @@ async fn a_simple_locale_index_survives_a_resync() {
     );
 }
 
-/// `fr_CA` expands with `backwards: true`, unlike `en`.
 #[tokio::test]
 #[ignore]
 async fn a_french_canadian_index_survives_a_resync() {
     assert_index_survives_a_resync::<FrenchCanadianCollConf>("fr_ca_collated").await;
 }
 
-/// `th` expands with `alternate: "shifted"` and `normalization: true`, two more deviations from `en`.
 #[tokio::test]
 #[ignore]
 async fn a_thai_index_survives_a_resync() {
     assert_index_survives_a_resync::<ThaiCollConf>("th_collated").await;
 }
 
-/// The inverse of every test above: a declaration that really changed has to rebuild.
-///
-/// Adding a collation to an uncollated index is the step that catches a comparison unable to read the
-/// server's expansion. Treating an unreadable expansion as "no collation" leaves both sides without
-/// one, they compare equal, and the sync reports success while the index stays uncollated. Changing
-/// the locale afterwards then checks the rebuild lands the declaration rather than just happening.
+/// A changed collation declaration must recreate the index.
 #[tokio::test]
 #[ignore]
 async fn changing_the_declared_collation_rebuilds_the_index() {

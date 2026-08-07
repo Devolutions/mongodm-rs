@@ -343,16 +343,9 @@ impl IndexOption {
 ///
 /// # Required privileges
 ///
-/// Index management (`listIndexes`, `createIndexes`, `dropIndexes`) is enough unless an index
-/// declares a collation. `MongoDB` stores a collation expanded to every ICU field plus a `version`
-/// of its own, so the declaration has to be expanded the same way before the two can be compared,
-/// and that expansion is obtained by running `explain` on a `find` — which needs the `find`
-/// privilege on the collection.
-///
-/// Without it the expansion cannot be read, the declaration is compared as written, and the collated
-/// index is dropped and recreated on every call. Synchronization still succeeds and the index is
-/// still correct; it is rebuilt each time rather than left alone. A least-privilege role that manages
-/// indexes but cannot read documents therefore keeps working, at that cost.
+/// Requires `listIndexes`, `createIndex`, and `dropIndex`. Collated indexes additionally require
+/// `find`, which obtains the server-expanded collation through `explain`. Without it, synchronization
+/// succeeds but recreates collated indexes on each call.
 pub async fn sync_indexes<CollConf: CollectionConfig>(
     db: &Database,
 ) -> Result<(), mongodb::error::Error> {
@@ -420,7 +413,12 @@ pub async fn sync_indexes<CollConf: CollectionConfig>(
                         )
                         .await
                         {
-                            Ok(expanded) => apply_expanded_collation(&mut index_doc, expanded),
+                            Ok(CollationExpansion::Expanded(expanded)) => {
+                                apply_expanded_collation(&mut index_doc, expanded)
+                            }
+                            // Preserve the declaration when the successful reply has an unfamiliar
+                            // shape. It then differs from a stored expansion and safely rebuilds.
+                            Ok(CollationExpansion::UnrecognizedExplainShape) => (),
                             // No `find` privilege, so the expansion cannot be read. Compare the
                             // declaration as written, which is what this did before expanding was
                             // introduced: the index is rebuilt every call rather than left wrong.
@@ -574,32 +572,22 @@ fn is_unauthorized(error: &mongodb::error::Error) -> bool {
     matches!(error.kind.as_ref(), mongodb::error::ErrorKind::Command(command) if command.code == 13)
 }
 
-fn unexpected_explain_shape(detail: &str) -> mongodb::error::Error {
-    std::io::Error::other(format!(
-        "could not read the collation from an explain reply: {detail}"
-    ))
-    .into()
+enum CollationExpansion {
+    Expanded(Option<Document>),
+    UnrecognizedExplainShape,
 }
 
-/// Reads the expanded collation out of an `explain` reply.
+#[derive(Debug)]
+struct UnrecognizedExplainShape;
+
+/// Extracts the server-expanded collation from an `explain` reply.
 ///
-/// `Ok(None)` means the reply reports no collation, which is how the server answers
-/// `locale: "simple"`: that request is stored as an index with no collation at all.
-///
-/// A shape this cannot read is an error rather than `Ok(None)`, because the two are not
-/// interchangeable: reading an unknown shape as "no collation" would drop the collation from the
-/// declaration, compare it equal to an uncollated index, and report success without building the
-/// index the caller asked for.
-///
-/// `mongos` reports per-shard planners instead of one at the top level, so that shape is handled
-/// too, and the shards have to agree — a collation that differs between them is not something this
-/// can turn into one answer.
-///
-/// Kept apart from the command that produces the reply so every shape can be covered by a unit test
-/// rather than only against a live deployment.
-fn collation_from_explain(explain: &Document) -> Result<Option<Document>, mongodb::error::Error> {
+/// Returns `None` only for a recognized planner without a collation.
+fn collation_from_explain(
+    explain: &Document,
+) -> Result<Option<Document>, UnrecognizedExplainShape> {
     let Ok(planner) = explain.get_document("queryPlanner") else {
-        return Err(unexpected_explain_shape("no queryPlanner"));
+        return Err(UnrecognizedExplainShape);
     };
 
     if let Ok(collation) = planner.get_document("collation") {
@@ -619,15 +607,7 @@ fn collation_from_explain(explain: &Document) -> Result<Option<Document>, mongod
 }
 
 /// The collation one shard reports.
-///
-/// A shard entry *is* a planner: `mongos` puts `namespace`, `parsedQuery`, `collation` and
-/// `winningPlan` directly on it rather than nesting a `queryPlanner` (verified against `MongoDB` 8.2
-/// through a real `mongos`). A nested one is accepted anyway, so a version reporting it that way
-/// keeps working.
-///
-/// `Ok(None)` is returned only once the entry has been recognized as a planner, so a shape this does
-/// not understand cannot be mistaken for "this shard stores no collation".
-fn shard_collation(shard: &Document) -> Result<Option<Document>, mongodb::error::Error> {
+fn shard_collation(shard: &Document) -> Result<Option<Document>, UnrecognizedExplainShape> {
     let planner = shard.get_document("queryPlanner").unwrap_or(shard);
 
     if let Ok(collation) = planner.get_document("collation") {
@@ -638,24 +618,22 @@ fn shard_collation(shard: &Document) -> Result<Option<Document>, mongodb::error:
         return Ok(None);
     }
 
-    Err(unexpected_explain_shape(
-        "a shard entry does not look like a query planner",
-    ))
+    Err(UnrecognizedExplainShape)
 }
 
 /// The one collation every shard reports, or an error if they do not agree.
 fn collation_agreed_across_shards(
     shards: &[Bson],
-) -> Result<Option<Document>, mongodb::error::Error> {
+) -> Result<Option<Document>, UnrecognizedExplainShape> {
     if shards.is_empty() {
-        return Err(unexpected_explain_shape("no shards in the winning plan"));
+        return Err(UnrecognizedExplainShape);
     }
 
     let mut agreed: Option<Option<Document>> = None;
 
     for shard in shards {
         let Some(shard) = shard.as_document() else {
-            return Err(unexpected_explain_shape("a shard entry is not a document"));
+            return Err(UnrecognizedExplainShape);
         };
 
         let collation = shard_collation(shard)?;
@@ -663,9 +641,7 @@ fn collation_agreed_across_shards(
         match &agreed {
             None => agreed = Some(collation),
             Some(first) if *first != collation => {
-                return Err(unexpected_explain_shape(
-                    "shards report different collations",
-                ));
+                return Err(UnrecognizedExplainShape);
             }
             Some(_) => (),
         }
@@ -674,18 +650,19 @@ fn collation_agreed_across_shards(
     Ok(agreed.flatten())
 }
 
-/// Asks the server how it would expand a declared collation.
-///
-/// `MongoDB` fills in every ICU field plus a `version` of its own when it stores a collation, and
-/// which values it picks depends on the locale: `fr_CA` defaults `backwards` to true, `da` defaults
-/// `caseFirst` to `upper`, `th` and `vi` default `normalization` to true. A local table of defaults
-/// is wrong for every locale it does not list, so the server is asked instead — `explain` reports
-/// the very expansion it would store.
+fn collation_expansion_from_explain(explain: &Document) -> CollationExpansion {
+    match collation_from_explain(explain) {
+        Ok(collation) => CollationExpansion::Expanded(collation),
+        Err(_) => CollationExpansion::UnrecognizedExplainShape,
+    }
+}
+
+/// Asks MongoDB to expand a declared collation via `explain`, rather than deriving defaults locally.
 async fn expanded_collation(
     db: &Database,
     collection: &str,
     collation: &Document,
-) -> Result<Option<Document>, mongodb::error::Error> {
+) -> Result<CollationExpansion, mongodb::error::Error> {
     let explain = h_run_command(
         db,
         doc! {
@@ -695,7 +672,7 @@ async fn expanded_collation(
     )
     .await?;
 
-    collation_from_explain(&explain)
+    Ok(collation_expansion_from_explain(&explain))
 }
 
 /// Replaces the declared collation with the server's expansion of it so the two can be compared.
@@ -725,7 +702,7 @@ fn doc_are_eq(a: &Document, b: &Document) -> bool {
 
     for (key, a_val) in a {
         match b.get(key) {
-            Some(b_val) if a_val != b_val => {
+            Some(b_val) if !bson_are_eq(a_val, b_val) => {
                 return false;
             }
             Some(_) => {}
@@ -736,6 +713,16 @@ fn doc_are_eq(a: &Document, b: &Document) -> bool {
     }
 
     true
+}
+
+fn bson_are_eq(a: &Bson, b: &Bson) -> bool {
+    match (a, b) {
+        (Bson::Document(a), Bson::Document(b)) => doc_are_eq(a, b),
+        (Bson::Array(a), Bson::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| bson_are_eq(a, b))
+        }
+        _ => a == b,
+    }
 }
 
 #[cfg(test)]
@@ -931,9 +918,7 @@ mod tests {
         );
     }
 
-    /// Every shape this cannot read has to be an error. `Ok(None)` would mean "stored without a
-    /// collation", which would drop the collation from the declaration and let an uncollated index
-    /// compare equal to a collated declaration.
+    /// An unreadable shape must not be treated as no collation.
     #[test]
     fn an_unreadable_reply_is_an_error_rather_than_no_collation() {
         let unreadable = [
@@ -969,6 +954,22 @@ mod tests {
         }
     }
 
+    #[test]
+    fn an_unreadable_reply_falls_back_to_the_declared_collation() {
+        let unreadable = doc! { "ok": 1.0 };
+        let declared = declared_index(Some(doc! { "locale": "en" }));
+        let stored = stored_index(Some(expansion("en", 2)));
+
+        assert!(matches!(
+            collation_expansion_from_explain(&unreadable),
+            CollationExpansion::UnrecognizedExplainShape
+        ));
+        assert!(
+            !doc_are_eq(&declared, &stored),
+            "the raw declaration must differ from the stored expansion"
+        );
+    }
+
     /// The whole point: a declaration the server expanded has to compare equal to what it stored, or
     /// `sync_indexes` drops and recreates the index on every run. Locale independence is covered
     /// against a real server in `tests/indexes.rs`, since nothing here is locale-aware.
@@ -1000,6 +1001,20 @@ mod tests {
             doc_are_eq(&declared, &stored_index(None)),
             "a simple-locale declaration should match a collation-less index, got {declared:?}"
         );
+    }
+
+    #[test]
+    fn documents_are_equal_regardless_of_nested_field_order() {
+        let a = doc! {
+            "key": { "field": 1 },
+            "collation": { "locale": "en", "strength": 2 },
+        };
+        let b = doc! {
+            "collation": { "strength": 2, "locale": "en" },
+            "key": { "field": 1 },
+        };
+
+        assert!(doc_are_eq(&a, &b));
     }
 
     /// Anything the declaration really changed expands differently and still has to rebuild.
