@@ -118,11 +118,7 @@ impl CollectionConfig for MultipleNotUniqueCollConf {
 #[tokio::test]
 #[ignore]
 async fn multiple_sync() {
-    let client_options = ClientOptions::parse("mongodb://localhost:27017")
-        .await
-        .unwrap();
-    let client = Client::with_options(client_options).unwrap();
-    let db = client.database("rust_mongo_orm_tests");
+    let db = test_db().await;
 
     db.collection::<Document>(MultipleSyncCollConf::collection_name())
         .drop()
