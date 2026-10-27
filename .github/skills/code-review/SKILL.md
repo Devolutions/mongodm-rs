@@ -3,8 +3,6 @@ name: code-review
 description: Review a diff or pull request using the repository's focused review skills. Use for code reviews and the review step requested by contribute or lead.
 ---
 
-# Code review
-
 Apply `code-compressor` to the requested revision or diff.
 Load the additional review skills for the surfaces it changes:
 
